@@ -21,3 +21,6 @@ library(dplyr)
 library(plotly)
 library(ggplot2)
 library(DT)
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+library(webmockr)

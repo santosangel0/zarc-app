@@ -1357,6 +1357,40 @@
       "Maintainer": "Winston Chang <winston@posit.co>",
       "Repository": "CRAN"
     },
+    "fauxpas": {
+      "Package": "fauxpas",
+      "Version": "0.6.0",
+      "Source": "Repository",
+      "Title": "HTTP Error Helpers",
+      "Description": "HTTP error helpers. Methods included for general purpose HTTP error handling, as well as individual methods for every HTTP status code, both via status code numbers as well as their descriptive names. Supports ability to adjust behavior to stop, message or warning. Includes ability to use custom whisker template to have any configuration of status code, short description, and verbose message. Currently supports integration with 'crul', 'curl', and 'httr'.",
+      "Authors@R": "person(\"Scott\", \"Chamberlain\", role = c(\"aut\", \"cre\"), email = \"myrmecocystus@gmail.com\", comment = c(ORCID = \"0000-0003-1444-9135\"))",
+      "License": "MIT + file LICENSE",
+      "URL": "https://sckott.github.io/fauxpas/, https://github.com/sckott/fauxpas",
+      "BugReports": "https://github.com/sckott/fauxpas/issues",
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "Imports": [
+        "R6 (>= 2.1.2)",
+        "httpcode (>= 0.3.0)",
+        "whisker"
+      ],
+      "Suggests": [
+        "crul (>= 0.5.0)",
+        "curl (>= 2.2)",
+        "httr (>= 1.2.0)",
+        "testthat",
+        "knitr",
+        "rmarkdown"
+      ],
+      "RoxygenNote": "7.3.3",
+      "X-schema.org-applicationCategory": "Web",
+      "X-schema.org-keywords": "http, https, API, web-services, curl, errors, error",
+      "NeedsCompilation": "no",
+      "Author": "Scott Chamberlain [aut, cre] (ORCID: <https://orcid.org/0000-0003-1444-9135>)",
+      "Maintainer": "Scott Chamberlain <myrmecocystus@gmail.com>",
+      "Repository": "CRAN"
+    },
     "fontawesome": {
       "Package": "fontawesome",
       "Version": "0.5.3",
@@ -1724,6 +1758,27 @@
       "NeedsCompilation": "no",
       "Author": "Ramnath Vaidyanathan [aut, cph], Yihui Xie [aut], JJ Allaire [aut], Joe Cheng [aut], Carson Sievert [aut, cre] (<https://orcid.org/0000-0002-4958-2844>), Kenton Russell [aut, cph], Ellis Hughes [ctb], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Carson Sievert <carson@posit.co>",
+      "Repository": "CRAN"
+    },
+    "httpcode": {
+      "Package": "httpcode",
+      "Version": "0.3.0",
+      "Source": "Repository",
+      "Title": "'HTTP' Status Code Helper",
+      "Description": "Find and explain the meaning of 'HTTP' status codes. Functions included for searching for codes by full or partial number, by message, and get appropriate dog and cat images for many status codes.",
+      "Authors@R": "person(\"Scott\", \"Chamberlain\", role = c(\"aut\",\"cre\"), email = \"myrmecocystus@gmail.com\",  comment = c(ORCID = \"0000-0003-1444-9135\"))",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/sckott/httpcode",
+      "BugReports": "https://github.com/sckott/httpcode/issues",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "Suggests": [
+        "testthat"
+      ],
+      "RoxygenNote": "7.1.0",
+      "NeedsCompilation": "no",
+      "Author": "Scott Chamberlain [aut, cre] (<https://orcid.org/0000-0003-1444-9135>)",
+      "Maintainer": "Scott Chamberlain <myrmecocystus@gmail.com>",
       "Repository": "CRAN"
     },
     "httpuv": {
@@ -4232,6 +4287,36 @@
       "Maintainer": "Davis Vaughan <davis@posit.co>",
       "Repository": "CRAN"
     },
+    "triebeard": {
+      "Package": "triebeard",
+      "Version": "0.4.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "'Radix' Trees in 'Rcpp'",
+      "Author": "Os Keyes [aut, cre], Drew Schmidt [aut], Yuuki Takano [cph]",
+      "Maintainer": "Os Keyes <ironholds@gmail.com>",
+      "Description": "'Radix trees', or 'tries', are key-value data structures optimised for efficient lookups, similar in purpose to hash tables. 'triebeard' provides an implementation of 'radix trees' for use in R programming and in developing packages with 'Rcpp'.",
+      "License": "MIT + file LICENSE",
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Encoding": "UTF-8",
+      "Imports": [
+        "Rcpp"
+      ],
+      "RoxygenNote": "7.1.2",
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat"
+      ],
+      "VignetteBuilder": "knitr",
+      "URL": "https://github.com/Ironholds/triebeard/",
+      "BugReports": "https://github.com/Ironholds/triebeard/issues",
+      "Date": "2023-03-04",
+      "NeedsCompilation": "yes",
+      "Repository": "CRAN"
+    },
     "units": {
       "Package": "units",
       "Version": "1.0-0",
@@ -4275,6 +4360,42 @@
       "Author": "Edzer Pebesma [aut, cre] (ORCID: <https://orcid.org/0000-0001-8049-7069>), Thomas Mailund [aut], Tomasz Kalinowski [aut], James Hiebert [ctb], Iñaki Ucar [aut] (ORCID: <https://orcid.org/0000-0001-6403-5550>), Thomas Lin Pedersen [ctb]",
       "Maintainer": "Edzer Pebesma <edzer.pebesma@uni-muenster.de>",
       "Repository": "CRAN"
+    },
+    "urltools": {
+      "Package": "urltools",
+      "Version": "1.7.3.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Vectorised Tools for URL Handling and Parsing",
+      "Date": "2019-04-14",
+      "Authors@R": "c(person(given = \"Os\", family = \"Keyes\", role = c(\"aut\", \"cre\"), email = \"ironholds@gmail.com\"), person(given = \"Jay\", family = \"Jacobs\", role = \"aut\"), person(given = \"Drew\", family = \"Schmidt\", role = \"aut\"), person(given = \"Mark\", family = \"Greenaway\", role = \"ctb\"), person(given = \"Bob\", family = \"Rudis\", role = \"ctb\"), person(given = \"Alex\", family = \"Pinto\", role = \"ctb\"), person(given = \"Maryam\", family = \"Khezrzadeh\", role = \"ctb\"), person(given = \"Peter\", family = \"Meilstrup\", role = \"ctb\"), person(given = c(\"Adam\", \"M.\"), family = \"Costello\", role = \"cph\"), person(given = \"Jeff\", family = \"Bezanson\", role = \"cph\"), person(given = \"Peter\", family = \"Meilstrup\", role = \"ctb\"), person(given = \"Xueyuan\", family = \"Jiang\", role = \"ctb\"))",
+      "Description": "A toolkit for all URL-handling needs, including encoding and decoding, parsing, parameter extraction and modification. All functions are designed to be both fast and entirely vectorised. It is intended to be useful for people dealing with web-related datasets, such as server-side logs, although may be useful for other situations involving large sets of URLs.",
+      "License": "MIT + file LICENSE",
+      "LazyData": "TRUE",
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Imports": [
+        "Rcpp",
+        "methods",
+        "triebeard"
+      ],
+      "Suggests": [
+        "testthat",
+        "knitr"
+      ],
+      "URL": "https://github.com/Ironholds/urltools/",
+      "BugReports": "https://github.com/Ironholds/urltools/issues",
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "6.1.1",
+      "Encoding": "UTF-8",
+      "Depends": [
+        "R (>= 2.10)"
+      ],
+      "NeedsCompilation": "yes",
+      "Repository": "CRAN",
+      "Author": "Os Keyes [aut, cre], Jay Jacobs [aut], Drew Schmidt [aut], Mark Greenaway [ctb], Bob Rudis [ctb], Alex Pinto [ctb], Maryam Khezrzadeh [ctb], Peter Meilstrup [ctb], Adam M. Costello [cph], Jeff Bezanson [cph], Peter Meilstrup [ctb], Xueyuan Jiang [ctb]",
+      "Maintainer": "Os Keyes <ironholds@gmail.com>"
     },
     "utf8": {
       "Package": "utf8",
@@ -4420,6 +4541,71 @@
       "Author": "Hadley Wickham [aut, cre], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "CRAN"
+    },
+    "webmockr": {
+      "Package": "webmockr",
+      "Version": "2.2.0",
+      "Source": "Repository",
+      "Title": "Stubbing and Setting Expectations on 'HTTP' Requests",
+      "Description": "Stubbing and setting expectations on 'HTTP' requests. Includes tools for stubbing 'HTTP' requests, including expected request conditions and response conditions. Match on 'HTTP' method, query parameters, request body, headers and more. Can be used for unit tests or outside of a testing context.",
+      "Authors@R": "c( person(\"Scott\", \"Chamberlain\", role = c(\"aut\", \"cre\"), email = \"myrmecocystus+r@gmail.com\", comment = c(ORCID=\"0000-0003-1444-9135\")), person(\"Aaron\", \"Wolen\", role = \"ctb\", comment = c(ORCID=\"0000-0003-2542-2202\")), person(\"rOpenSci\", role = \"fnd\", comment = c(ROR = \"019jywm96\")) )",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/ropensci/webmockr, https://books.ropensci.org/http-testing/, https://docs.ropensci.org/webmockr/",
+      "BugReports": "https://github.com/ropensci/webmockr/issues",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "Depends": [
+        "R(>= 4.1.0)"
+      ],
+      "Imports": [
+        "curl",
+        "jsonlite",
+        "magrittr (>= 1.5)",
+        "R6 (>= 2.1.3)",
+        "urltools (>= 1.6.0)",
+        "fauxpas",
+        "rlang",
+        "cli"
+      ],
+      "Suggests": [
+        "testthat (>= 3.0.0)",
+        "xml2",
+        "crul",
+        "httr",
+        "httr2",
+        "diffobj",
+        "withr"
+      ],
+      "RoxygenNote": "7.3.2",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "true",
+      "X-schema.org-applicationCategory": "Web",
+      "X-schema.org-keywords": "http, https, API, web-services, curl, mock, mocking, fakeweb, http-mocking, testing, testing-tools, tdd",
+      "X-schema.org-isPartOf": "https://ropensci.org",
+      "NeedsCompilation": "no",
+      "Author": "Scott Chamberlain [aut, cre] (ORCID: <https://orcid.org/0000-0003-1444-9135>), Aaron Wolen [ctb] (ORCID: <https://orcid.org/0000-0003-2542-2202>), rOpenSci [fnd] (ROR: <https://ror.org/019jywm96>)",
+      "Maintainer": "Scott Chamberlain <myrmecocystus+r@gmail.com>",
+      "Repository": "CRAN"
+    },
+    "whisker": {
+      "Package": "whisker",
+      "Version": "0.4.1",
+      "Source": "Repository",
+      "Maintainer": "Edwin de Jonge <edwindjonge@gmail.com>",
+      "License": "GPL-3",
+      "Title": "{{mustache}} for R, Logicless Templating",
+      "Type": "Package",
+      "LazyLoad": "yes",
+      "Author": "Edwin de Jonge",
+      "Description": "Implements 'Mustache' logicless templating.",
+      "URL": "https://github.com/edwindj/whisker",
+      "Suggests": [
+        "markdown"
+      ],
+      "RoxygenNote": "6.1.1",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
     },
     "withr": {
       "Package": "withr",
