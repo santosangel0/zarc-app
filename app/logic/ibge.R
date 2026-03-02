@@ -84,6 +84,66 @@ get_mesoregions <- function(state_code) {
   )
 }
 
+#' Fetch all Brazilian states.
+#'
+#' @return A data.frame with `id` and `nome`.
+#' @export
+get_all_states <- function() {
+  url <- paste0(
+    "https://servicodados.ibge.gov.br/",
+    "api/v1/localidades/estados",
+    "?orderBy=nome"
+  )
+  resp <- httr2$request(url) |>
+    httr2$req_retry(max_tries = 3L) |>
+    httr2$req_timeout(30L) |>
+    httr2$req_error(
+      is_error = function(resp) FALSE
+    ) |>
+    httr2$req_perform()
+
+  data <- httr2$resp_body_json(
+    resp,
+    simplifyVector = TRUE
+  )
+  data.frame(
+    id = data$id,
+    nome = data$nome,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Fetch municipalities for a given state.
+#'
+#' @param state_code Integer IBGE state code.
+#' @return A data.frame with `id` and `nome`.
+#' @export
+get_municipalities <- function(state_code) {
+  url <- paste0(
+    "https://servicodados.ibge.gov.br/",
+    "api/v1/localidades/estados/",
+    state_code, "/municipios",
+    "?orderBy=nome"
+  )
+  resp <- httr2$request(url) |>
+    httr2$req_retry(max_tries = 3L) |>
+    httr2$req_timeout(60L) |>
+    httr2$req_error(
+      is_error = function(resp) FALSE
+    ) |>
+    httr2$req_perform()
+
+  data <- httr2$resp_body_json(
+    resp,
+    simplifyVector = TRUE
+  )
+  data.frame(
+    id = data$id,
+    nome = data$nome,
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Fetch GeoJSON polygons from IBGE Malhas API.
 #'
 #' @param level Character: `"regioes"`, `"estados"`,
@@ -225,21 +285,24 @@ fetch_subdivisions <- function(
 #'
 #' Uses Table 74 (PPM) with Variable 106 and
 #' Classification 80/2682 (Leite) from the IBGE
-#' Agregados API v3.
+#' Agregados API v3. Supports multiple years.
 #'
 #' @param geo_level Character geographic level code:
 #'   `"N2"` (grande regiao), `"N3"` (estado),
-#'   `"N6"` (municipio), `"N8"` (mesorregiao).
-#' @param codes Integer vector of IBGE codes at the
-#'   given geographic level.
-#' @param year Integer year (e.g. 2021).
+#'   `"N6"` (municipio), `"N8"` (mesorregiao),
+#'   `"N9"` (microrregiao).
+#' @param codes Integer vector of IBGE codes.
+#' @param years Integer vector of years.
 #' @return A data.frame with columns `code`, `nome`,
 #'   `year`, and `milk_production_liters`.
 #' @export
 fetch_milk_production <- function(
-  geo_level, codes, year
+  geo_level, codes, years
 ) {
-  valid <- c("N1", "N2", "N3", "N6", "N8")
+  valid <- c(
+    "N1", "N2", "N3",
+    "N6", "N8", "N9"
+  )
   if (!geo_level %in% valid) {
     stop(
       "Invalid geo_level '", geo_level,
@@ -249,10 +312,11 @@ fetch_milk_production <- function(
   }
 
   codes_str <- paste(codes, collapse = ",")
+  years_str <- paste(years, collapse = "|")
   url <- paste0(
     "https://servicodados.ibge.gov.br/",
     "api/v3/agregados/74",
-    "/periodos/", year,
+    "/periodos/", years_str,
     "/variaveis/106",
     "?localidades=", geo_level,
     "[", codes_str, "]",
@@ -280,7 +344,7 @@ fetch_milk_production <- function(
   if (status >= 400L) {
     warning(
       "IBGE API error (HTTP ", status,
-      ") for year=", year
+      ") for years=", years_str
     )
     return(empty_df)
   }
@@ -299,16 +363,15 @@ fetch_milk_production <- function(
 
   rows <- lapply(series, function(s) {
     loc <- s$localidade
-    val <- s$serie[[as.character(year)]]
-    val_num <- suppressWarnings(
-      as.numeric(val)
-    )
+    yr_names <- names(s$serie)
+    yr_vals <- unlist(s$serie)
+    cleaned <- clean_sidra_values(yr_vals)
     data.frame(
       code = as.integer(loc$id),
       nome = loc$nome,
-      year = as.integer(year),
+      year = as.integer(yr_names),
       milk_production_liters = (
-        val_num * 1000
+        cleaned * 1000
       ),
       stringsAsFactors = FALSE
     )
@@ -318,4 +381,83 @@ fetch_milk_production <- function(
   result[
     !is.na(result$milk_production_liters),
   ]
+}
+
+#' Validate IBGE API request against 100k limit.
+#'
+#' The Agregados API allows at most 100,000 values
+#' per request: categories x periods x locations.
+#'
+#' @param n_categories Integer number of categories.
+#' @param n_periods Integer number of periods.
+#' @param n_locations Integer number of locations.
+#' @return `TRUE` if valid, or a character string
+#'   with the error message.
+#' @export
+validate_api_request <- function(
+  n_categories = 1L,
+  n_periods,
+  n_locations
+) {
+  total <- n_categories * n_periods * n_locations
+  limit <- 100000L
+  if (total <= limit) {
+    return(TRUE)
+  }
+  paste0(
+    "A requisi\u00e7\u00e3o excede o ",
+    "limite de 100.000 valores (",
+    format(
+      total,
+      big.mark = ".",
+      decimal.mark = ","
+    ),
+    "). Reduza o intervalo de ",
+    "tempo ou o n\u00famero de ",
+    "localidades."
+  )
+}
+
+#' Clean IBGE/SIDRA special value strings.
+#'
+#' Converts IBGE conventions:
+#' `"-"` -> 0, `".."` / `"..."` / `"X"` -> NA.
+#'
+#' @param x Character vector of raw values.
+#' @return Numeric vector.
+#' @export
+clean_sidra_values <- function(x) {
+  x[x == "-"] <- "0"
+  x[x %in% c("..", "...", "X")] <- NA_character_
+  suppressWarnings(as.numeric(x))
+}
+
+#' Fetch microregions for a given state.
+#'
+#' @param state_code Integer IBGE state code.
+#' @return A data.frame with `id` and `nome`.
+#' @export
+get_microregions <- function(state_code) {
+  url <- paste0(
+    "https://servicodados.ibge.gov.br/",
+    "api/v1/localidades/estados/",
+    state_code, "/microrregioes"
+  )
+  resp <- httr2$request(url) |>
+    httr2$req_retry(max_tries = 3L) |>
+    httr2$req_timeout(30L) |>
+    httr2$req_error(
+      is_error = function(resp) FALSE
+    ) |>
+    httr2$req_perform()
+
+  data <- httr2$resp_body_json(
+    resp,
+    simplifyVector = TRUE
+  )
+  data.frame(
+    id = data$id,
+    nome = data$nome,
+    stringsAsFactors = FALSE
+  )
 }
