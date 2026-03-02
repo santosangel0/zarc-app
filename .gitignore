@@ -1,0 +1,28 @@
+# Rhino / Shiny
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# renv
+renv/library/
+renv/staging/
+renv/sandbox/
+renv/cellar/
+
+# Node (Rhino build)
+node_modules/
+app/static/app.min.js
+app/static/app.min.css
+
+# Data artifacts
+*.csv
+*.geojson
+data/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Instruction file
+instruction
