@@ -1,16 +1,18 @@
 # nolint start: commented_code_linter
 # zarc-app / app / main.R
-# Entry point for the Rhino application.
+# Root Shiny module for zarc-app.
 # nolint end
 
 box::use(
   shiny,
-  leaflet,
   bslib,
+  leaflet,
   sf,
   app / view / geo_sidebar,
+  app / view / charts,
+  app / view / analysis,
+  app / view / data_view,
   app / logic / ibge,
-  app / logic / state,
 )
 
 #' Main UI
@@ -33,17 +35,50 @@ ui <- function(id) {
       primary = "#2ecc71",
       success = "#27ae60",
       info = "#3498db",
-      base_font = "Inter, system-ui, sans-serif"
+      base_font = paste0(
+        "Inter, system-ui, sans-serif"
+      )
     ),
     sidebar = bslib$sidebar(
-      width = 340,
+      width = 360,
       geo_sidebar$ui(ns("geo"))
     ),
-    shiny$tags$div(
-      class = "map-container",
-      leaflet$leafletOutput(
-        ns("map"),
-        height = "calc(100vh - 80px)"
+    bslib$navset_tab(
+      bslib$nav_panel(
+        title = shiny$tags$span(
+          shiny$icon("map"), " Mapa"
+        ),
+        shiny$tags$div(
+          class = "map-container",
+          leaflet$leafletOutput(
+            ns("map"),
+            height = "calc(100vh - 120px)"
+          )
+        )
+      ),
+      bslib$nav_panel(
+        title = shiny$tags$span(
+          shiny$icon("chart-bar"),
+          paste0(
+            " Gr\u00e1ficos"
+          )
+        ),
+        charts$ui(ns("charts"))
+      ),
+      bslib$nav_panel(
+        title = shiny$tags$span(
+          shiny$icon("chart-line"),
+          paste0(
+            " An\u00e1lise"
+          )
+        ),
+        analysis$ui(ns("analysis"))
+      ),
+      bslib$nav_panel(
+        title = shiny$tags$span(
+          shiny$icon("table"), " Dados"
+        ),
+        data_view$ui(ns("data_view"))
       )
     )
   )
@@ -52,121 +87,157 @@ ui <- function(id) {
 #' Main Server
 #' @export
 server <- function(id) {
-  shiny$moduleServer(
-    id,
-    function(input, output, session) {
-      ns <- session$ns
+  shiny$moduleServer(id, function(
+    input, output, session
+  ) {
+    ns <- session$ns
 
-      app_state <- state$create_state()
+    app_state <- shiny$reactiveValues(
+      geo_level = NULL,
+      target_codes = NULL,
+      years = NULL,
+      year_start = NULL,
+      year_end = NULL,
+      milk_data = NULL,
+      raw_milk_data = NULL,
+      geo_data = NULL,
+      apply_trigger = NULL
+    )
 
-      geo_sidebar$server(
-        "geo",
-        app_state = app_state
-      )
+    geo_sidebar$server("geo", app_state)
 
-      output$map <- leaflet$renderLeaflet({
-        leaflet$leaflet() |>
-          leaflet$addTiles() |>
-          leaflet$setView(
-            lng = -49.5,
-            lat = -15.5,
-            zoom = 5
+    output$map <- leaflet$renderLeaflet({
+      leaflet$leaflet() |>
+        leaflet$addProviderTiles(
+          leaflet$providers$CartoDB.DarkMatter
+        ) |>
+        leaflet$setView(
+          lng = -49.3, lat = -15.8,
+          zoom = 4
+        )
+    })
+
+    # ── Main data observer: apply_trigger
+    shiny$observeEvent(
+      app_state$apply_trigger,
+      {
+        shiny$req(
+          app_state$apply_trigger,
+          app_state$geo_level,
+          app_state$target_codes,
+          app_state$years
+        )
+
+        geo_level <- app_state$geo_level
+        codes <- app_state$target_codes
+        years <- app_state$years
+
+        # Validate API request
+        validation <- (
+          ibge$validate_api_request(
+            n_categories = 1L,
+            n_periods = length(years),
+            n_locations = length(codes)
           )
-      })
+        )
 
-      shiny$observeEvent(
-        list(
-          app_state$region_code,
-          app_state$state_code,
-          app_state$mesoregion_code,
-          app_state$year
-        ),
-        {
-          shiny$req(app_state$region_code)
-
-          target_code <- app_state$region_code
-          subdivision <- "estados"
-
-          if (!is.null(app_state$state_code)) {
-            target_code <- app_state$state_code
-            subdivision <- "mesorregioes"
-          }
-          if (!is.null(
-            app_state$mesoregion_code
-          )) {
-            target_code <- (
-              app_state$mesoregion_code
-            )
-            subdivision <- "municipios"
-          }
-
+        if (is.character(validation)) {
           shiny$showNotification(
-            paste(
-              "Carregando dados para",
-              target_code, "..."
-            ),
-            type = "message",
-            duration = 3
+            validation,
+            type = "warning",
+            duration = 8
           )
+          return()
+        }
 
-          tryCatch(
-            {
-              geo <- ibge$fetch_subdivisions(
-                target_code, subdivision
+        shiny$showNotification(
+          paste0(
+            "Carregando ",
+            length(codes),
+            " localidades..."
+          ),
+          type = "message",
+          duration = 3
+        )
+
+        tryCatch(
+          {
+            # Fetch milk production
+            milk <- ibge$fetch_milk_production(
+              geo_level, codes, years
+            )
+
+            # Store raw data
+            app_state$raw_milk_data <- milk
+            app_state$milk_data <- milk
+
+            # For the map: use latest year
+            latest_yr <- if (nrow(milk) > 0L) {
+              max(milk$year)
+            } else {
+              max(years)
+            }
+
+            # Map subdivision level
+            subdiv <- switch(geo_level,
+              "N2" = "regioes",
+              "N3" = "estados",
+              "N8" = "mesorregioes",
+              "N9" = "microrregioes",
+              "N6" = "municipios",
+              "estados"
+            )
+
+            # Build GeoJSON URL
+            geo <- fetch_geo_for_codes(
+              geo_level, codes, subdiv
+            )
+            app_state$geo_data <- geo
+
+            if (
+              !is.null(geo) &&
+                nrow(milk) > 0L
+            ) {
+              milk_yr <- milk[
+                milk$year == latest_yr,
+              ]
+              geo <- merge(
+                geo, milk_yr,
+                by.x = "codarea",
+                by.y = "code",
+                all.x = TRUE
               )
+            }
 
-              # Map subdivision to API geo level
-              milk_level <- switch(subdivision,
-                "estados" = "N3",
-                "mesorregioes" = "N8",
-                "municipios" = "N6",
-                "N3"
-              )
+            # Update map
+            proxy <- leaflet$leafletProxy(
+              ns("map"), session
+            )
+            proxy <- proxy |>
+              leaflet$clearShapes() |>
+              leaflet$clearControls()
 
-              # Get codes from GeoJSON features
-              geo$codarea <- as.integer(
-                geo$codarea
-              )
-              milk_codes <- geo$codarea
-
-              milk <- ibge$fetch_milk_production(
-                milk_level,
-                milk_codes,
-                app_state$year
-              )
-
-              if (nrow(milk) > 0L) {
-                geo <- merge(
-                  geo, milk,
-                  by.x = "codarea",
-                  by.y = "code",
-                  all.x = TRUE
-                )
-              }
-
-              proxy <- leaflet$leafletProxy(
-                ns("map"), session
-              )
-              proxy <- proxy |>
-                leaflet$clearShapes() |>
-                leaflet$clearControls()
-
-              has_data <- (
+            has_data <- (
+              !is.null(geo) &&
                 "milk_production_liters" %in%
                   names(geo) &&
-                  any(!is.na(
-                    geo$milk_production_liters
-                  ))
+                any(!is.na(
+                  geo$milk_production_liters
+                ))
+            )
+
+            if (has_data) {
+              render_choropleth(
+                proxy, geo, latest_yr
               )
+            } else if (!is.null(geo)) {
+              render_plain(proxy, geo)
+            }
 
-              if (has_data) {
-                render_choropleth(
-                  proxy, geo, app_state$year
-                )
-              } else {
-                render_plain(proxy, geo)
-              }
-
+            if (
+              !is.null(geo) &&
+                nrow(geo) > 0L
+            ) {
               bbox <- sf$st_bbox(geo)
               proxy |> leaflet$fitBounds(
                 lng1 = bbox[["xmin"]],
@@ -174,42 +245,76 @@ server <- function(id) {
                 lng2 = bbox[["xmax"]],
                 lat2 = bbox[["ymax"]]
               )
-
-              shiny$showNotification(
-                paste0(
-                  "Carregados ",
-                  nrow(geo), " ",
-                  subdivision
-                ),
-                type = "message",
-                duration = 3
-              )
-            },
-            error = function(e) {
-              shiny$showNotification(
-                paste("Erro:", e$message),
-                type = "error",
-                duration = 8
-              )
             }
-          )
-        },
-        ignoreInit = TRUE
-      )
-    }
-  )
+
+            shiny$showNotification(
+              paste0(
+                "Carregados ",
+                nrow(milk), " registros"
+              ),
+              type = "message",
+              duration = 3
+            )
+          },
+          error = function(e) {
+            shiny$showNotification(
+              paste("Erro:", e$message),
+              type = "error",
+              duration = 8
+            )
+          }
+        )
+      },
+      ignoreInit = TRUE
+    )
+
+    # Wire sub-modules
+    charts$server("charts", app_state)
+    analysis$server("analysis", app_state)
+    data_view$server("data_view", app_state)
+  })
 }
 
-#' Render choropleth polygons on a leaflet proxy.
-#' @param proxy Leaflet proxy object.
-#' @param geo sf object with milk_production_liters.
-#' @param year Integer year for legend title.
+#' Fetch GeoJSON for selected codes.
 #' @keywords internal
-render_choropleth <- function(proxy, geo, year) {
+fetch_geo_for_codes <- function(
+  geo_level, codes, subdiv
+) {
+  geo_list <- lapply(codes, function(cd) {
+    tryCatch(
+      {
+        ibge$fetch_subdivisions(
+          cd, subdiv
+        )
+      },
+      error = function(e) {
+        tryCatch(
+          ibge$fetch_geojson(
+            subdiv, cd
+          ),
+          error = function(e2) NULL
+        )
+      }
+    )
+  })
+  geo_list <- Filter(
+    function(x) !is.null(x), geo_list
+  )
+  if (length(geo_list) == 0L) {
+    return(NULL)
+  }
+  do.call(rbind, geo_list)
+}
+
+#' Render choropleth map.
+#' @keywords internal
+render_choropleth <- function(
+  proxy, geo, year
+) {
   pal <- leaflet$colorNumeric(
-    palette = c("#edf8e9", "#006d2c"),
+    palette = "YlOrRd",
     domain = geo$milk_production_liters,
-    na.color = "#cccccc"
+    na.color = "#555555"
   )
 
   mun_name <- if (
@@ -236,10 +341,10 @@ render_choropleth <- function(proxy, geo, year) {
       fillColor = ~ pal(
         milk_production_liters
       ),
-      fillOpacity = 0.7,
-      color = "#ffffff",
-      weight = 1,
-      opacity = 0.8,
+      fillOpacity = 0.8,
+      color = "#222222",
+      weight = 1.2,
+      opacity = 0.9,
       label = lapply(labels, shiny$HTML),
       labelOptions = leaflet$labelOptions(
         style = list(
@@ -250,8 +355,8 @@ render_choropleth <- function(proxy, geo, year) {
       highlightOptions = (
         leaflet$highlightOptions(
           weight = 3,
-          color = "#2ecc71",
-          fillOpacity = 0.9,
+          color = "#ff6600",
+          fillOpacity = 0.95,
           bringToFront = TRUE
         )
       )
@@ -261,13 +366,11 @@ render_choropleth <- function(proxy, geo, year) {
       pal = pal,
       values = geo$milk_production_liters,
       title = paste("Leite (L)", year),
-      opacity = 0.8
+      opacity = 0.9
     )
 }
 
-#' Render plain polygons (no production data).
-#' @param proxy Leaflet proxy object.
-#' @param geo sf object.
+#' Render plain boundary map.
 #' @keywords internal
 render_plain <- function(proxy, geo) {
   proxy |>
@@ -275,8 +378,16 @@ render_plain <- function(proxy, geo) {
       data = geo,
       fillColor = "#3498db",
       fillOpacity = 0.3,
-      color = "#ffffff",
+      color = "#ecf0f1",
       weight = 1,
-      opacity = 0.8
+      opacity = 0.7,
+      highlightOptions = (
+        leaflet$highlightOptions(
+          weight = 3,
+          color = "#ff6600",
+          fillOpacity = 0.5,
+          bringToFront = TRUE
+        )
+      )
     )
 }

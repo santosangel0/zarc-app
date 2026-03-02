@@ -16,3 +16,8 @@ library(httr2)
 library(jsonlite)
 library(sf)
 library(dplyr)
+
+# ── Charts ───────────────────────────────────────────────────────────────────
+library(plotly)
+library(ggplot2)
+library(DT)
