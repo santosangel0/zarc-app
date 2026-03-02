@@ -90,3 +90,20 @@ import_state <- function(state, path) {
   }
   invisible(state)
 }
+
+#' Load session state from a JSON file.
+#'
+#' Returns a list of settings without modifying
+#' any reactive values. Used for UI restoration.
+#'
+#' @param path Character file path to JSON file.
+#' @return A list of imported settings.
+#' @export
+load_state <- function(path) {
+  if (!file.exists(path)) {
+    stop("State file not found: ", path)
+  }
+  jsonlite$fromJSON(
+    readLines(path, warn = FALSE)
+  )
+}
