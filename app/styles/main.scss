@@ -1,0 +1,129 @@
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* zarc-app: Geographic Intelligence for AgTech                               */
+/* Custom SCSS theme overlay on top of bslib Darkly theme                     */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── Variables ──────────────────────────────────────────────────────────────── */
+$agtech-green: #2ecc71;
+$agtech-dark: #1a1a2e;
+$agtech-surface: #16213e;
+$agtech-accent: #0f3460;
+$agtech-text: #e4e4e4;
+
+/* ── Sidebar ────────────────────────────────────────────────────────────────── */
+.sidebar-header {
+    text-align: center;
+    padding: 1.2rem 0.5rem 0.8rem;
+    border-bottom: 1px solid rgba($agtech-green, 0.25);
+    margin-bottom: 1rem;
+
+    h3 {
+        color: $agtech-green;
+        font-weight: 700;
+        font-size: 1.15rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
+.sidebar-subtitle {
+    color: rgba($agtech-text, 0.6);
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+.sidebar-filters {
+    padding: 0 0.25rem;
+
+    .form-group {
+        margin-bottom: 0.9rem;
+
+        label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: rgba($agtech-text, 0.7);
+        }
+    }
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn-apply {
+    width: 100%;
+    background: linear-gradient(135deg, $agtech-green, darken($agtech-green, 12%));
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    padding: 0.65rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba($agtech-green, 0.35);
+        background: linear-gradient(135deg, lighten($agtech-green, 5%), $agtech-green);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.sidebar-actions {
+    margin-top: 1rem;
+}
+
+.btn-export {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba($agtech-text, 0.2);
+    color: rgba($agtech-text, 0.7);
+    font-size: 0.78rem;
+    padding: 0.45rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: $agtech-green;
+        color: $agtech-green;
+    }
+}
+
+/* ── Map ────────────────────────────────────────────────────────────────────── */
+.map-container {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Leaflet overrides for dark theme ───────────────────────────────────────── */
+.leaflet-container {
+    background: $agtech-dark;
+}
+
+.leaflet-control-zoom a {
+    background: $agtech-surface !important;
+    color: $agtech-text !important;
+    border-color: rgba($agtech-text, 0.15) !important;
+
+    &:hover {
+        background: $agtech-accent !important;
+    }
+}
+
+.leaflet-control-attribution {
+    background: rgba($agtech-dark, 0.85) !important;
+    color: rgba($agtech-text, 0.5) !important;
+    font-size: 0.65rem !important;
+}
+
+.info.legend {
+    background: rgba($agtech-surface, 0.92) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    color: $agtech-text !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+}
