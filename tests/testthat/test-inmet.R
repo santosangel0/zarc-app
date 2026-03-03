@@ -288,8 +288,9 @@ describe("fetch_climate_data()", {
       "A001", "2023-01-01", "2023-01-03"
     )
     # Day 2: TEMP_MED=55 is out of [-10,50]
-    row2 <- result[result$date ==
-      as.Date("2023-01-02"), ]
+    row2 <- result[
+      result$date == as.Date("2023-01-02"),
+    ]
     expect_true(is.na(row2$TEMP_MED))
   })
 
@@ -301,8 +302,9 @@ describe("fetch_climate_data()", {
       "A001", "2023-01-01", "2023-01-03"
     )
     # Day 2: UMID_MIN=-5 is out of [0,100]
-    row2 <- result[result$date ==
-      as.Date("2023-01-02"), ]
+    row2 <- result[
+      result$date == as.Date("2023-01-02"),
+    ]
     expect_true(is.na(row2$UMID_MIN))
   })
 
@@ -314,10 +316,9 @@ describe("fetch_climate_data()", {
       "A001", "2023-01-01", "2023-01-03"
     )
     # Day 1: TEMP_MED=25, UMID_MED=70
-    # ITU_MED = 0.8*25 + (70*(25-14.3))/100
-    #         + 46.3
-    row1 <- result[result$date ==
-      as.Date("2023-01-01"), ]
+    row1 <- result[
+      result$date == as.Date("2023-01-01"),
+    ]
     expected_itu_med <- (
       0.8 * 25 +
         (70 * (25 - 14.3)) / 100 +
@@ -330,8 +331,6 @@ describe("fetch_climate_data()", {
     )
 
     # Day 1: TEMP_MAX=30, UMID_MIN=50
-    # ITU_MAX = 0.8*30 + (50*(30-14.3))/100
-    #         + 46.3
     expected_itu_max <- (
       0.8 * 30 +
         (50 * (30 - 14.3)) / 100 +
@@ -352,8 +351,9 @@ describe("fetch_climate_data()", {
       "A001", "2023-01-01", "2023-01-03"
     )
     # Day 2: TEMP_MED was set to NA by QC
-    row2 <- result[result$date ==
-      as.Date("2023-01-02"), ]
+    row2 <- result[
+      result$date == as.Date("2023-01-02"),
+    ]
     expect_true(is.na(row2$ITU_MED))
     # Day 2: UMID_MIN was set to NA by QC
     expect_true(is.na(row2$ITU_MAX))

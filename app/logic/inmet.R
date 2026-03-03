@@ -218,20 +218,20 @@ fetch_climate_data <- function(
   )
 
   # ── ITU Calculation (Buffington 1977) ──
-  # ITU = 0.8*Tbs + UR*(Tbs - 14.3)/100 + 46.3
+  itu_term_med <- (
+    df$UMID_MED * (df$TEMP_MED - 14.3)
+  ) / 100
   df$ITU_MED <- (
-    0.8 * df$TEMP_MED +
-      (df$UMID_MED *
-        (df$TEMP_MED - 14.3)) / 100 +
-      46.3
+    0.8 * df$TEMP_MED + itu_term_med + 46.3
   )
 
+  itu_term_max <- (
+    df$UMID_MIN * (df$TEMP_MAX - 14.3)
+  ) / 100
   df$ITU_MAX <- (
-    0.8 * df$TEMP_MAX +
-      (df$UMID_MIN *
-        (df$TEMP_MAX - 14.3)) / 100 +
-      46.3
+    0.8 * df$TEMP_MAX + itu_term_max + 46.3
   )
+
 
   df
 }
