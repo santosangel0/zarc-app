@@ -18,23 +18,14 @@ ui <- function(id) {
 
   shiny$tagList(
     shiny$tags$div(
-      class = "sidebar-header",
-      shiny$tags$img(
-        src = "static/marca-embrapa-branco.png",
-        alt = "Embrapa",
-        class = "sidebar-logo",
-        width = "180px"
-      ),
-      shiny$tags$h3(
-        "Embrapa Gado de Leite"
-      ),
-      shiny$tags$p(
-        class = "sidebar-subtitle",
+      shiny$tags$h5(
+        "\U0001F404",
         paste0(
-          "Explorador de ",
+          " Explorador de ",
           "Produ\u00e7\u00e3o Leiteira"
         )
-      )
+      ),
+      shiny$tags$hr()
     ),
     shiny$tags$div(
       class = "sidebar-filters",

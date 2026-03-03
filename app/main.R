@@ -25,7 +25,7 @@ ui <- function(id) {
         height = "30px",
         class = "me-2"
       ),
-      "Embrapa Gado de Leite"
+      "Gado de leite"
     ),
     theme = bslib$bs_theme(
       version = 5,
@@ -82,7 +82,9 @@ server <- function(id) {
       # Locked state (Wizard)
       locked_region = NULL,
       locked_years = NULL,
-      step = 1L
+      step = 1L,
+      # Climate data (Step 2)
+      climate_data = NULL
     )
 
     # ── Wire step modules ──
