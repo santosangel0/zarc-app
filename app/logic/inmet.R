@@ -12,11 +12,18 @@ box::use(
   sf,
 )
 
+# INMET API requires a browser-like User-Agent
+inmet_ua <- paste0(
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ",
+  "AppleWebKit/537.36 (KHTML, like Gecko) ",
+  "Chrome/120.0.0.0 Safari/537.36"
+)
+
 #' Fetch all automatic INMET stations.
 #'
 #' Retrieves the full list of automatic weather
 #' stations from the INMET API, cleans coordinates,
-#' and returns an `sf` object in SIRGAS 2000.
+#' and returns an `sf` object in WGS84.
 #'
 #' @return An `sf` object with columns
 #'   `CD_ESTACAO`, `DC_NOME`, `VL_LATITUDE`,
@@ -29,6 +36,10 @@ get_stations <- function() {
   )
 
   resp <- httr2$request(url) |>
+    httr2$req_headers(
+      `User-Agent` = inmet_ua,
+      Accept = "application/json"
+    ) |>
     httr2$req_retry(max_tries = 3L) |>
     httr2$req_timeout(60L) |>
     httr2$req_error(
@@ -36,8 +47,17 @@ get_stations <- function() {
     ) |>
     httr2$req_perform()
 
-  data <- httr2$resp_body_json(
-    resp,
+  status <- httr2$resp_status(resp)
+  if (status >= 400L) {
+    stop(
+      "INMET stations API error (HTTP ",
+      status, ")"
+    )
+  }
+
+  raw <- httr2$resp_body_string(resp)
+  data <- jsonlite$fromJSON(
+    raw,
     simplifyVector = TRUE
   )
 
@@ -63,13 +83,13 @@ get_stations <- function() {
   )
   data <- data[valid, ]
 
-  # Convert to sf (SIRGAS 2000 = EPSG:4674)
+  # Convert to sf (WGS84 = EPSG:4326)
   stations_sf <- sf$st_as_sf(
     data,
     coords = c(
       "VL_LONGITUDE", "VL_LATITUDE"
     ),
-    crs = 4674L,
+    crs = 4326L,
     remove = FALSE
   )
 
@@ -88,16 +108,20 @@ get_stations <- function() {
 filter_stations <- function(
   stations_sf, roi_sf
 ) {
-  # Ensure matching CRS
-  if (
-    sf$st_crs(stations_sf) !=
-      sf$st_crs(roi_sf)
-  ) {
-    roi_sf <- sf$st_transform(
-      roi_sf,
-      sf$st_crs(stations_sf)
+  # Normalize both to WGS84 (EPSG:4326)
+  if (!is.na(sf$st_crs(stations_sf))) {
+    stations_sf <- sf$st_transform(
+      stations_sf, 4326L
     )
   }
+  if (!is.na(sf$st_crs(roi_sf))) {
+    roi_sf <- sf$st_transform(
+      roi_sf, 4326L
+    )
+  }
+
+  # Ensure valid geometries
+  roi_sf <- sf$st_make_valid(roi_sf)
 
   # Spatial join (inner)
   joined <- suppressMessages(
@@ -138,6 +162,10 @@ fetch_climate_data <- function(
   )
 
   resp <- httr2$request(url) |>
+    httr2$req_headers(
+      `User-Agent` = inmet_ua,
+      Accept = "application/json"
+    ) |>
     httr2$req_retry(max_tries = 3L) |>
     httr2$req_timeout(120L) |>
     httr2$req_error(
@@ -145,10 +173,7 @@ fetch_climate_data <- function(
     ) |>
     httr2$req_perform()
 
-  data <- httr2$resp_body_json(
-    resp,
-    simplifyVector = TRUE
-  )
+  status <- httr2$resp_status(resp)
 
   # Empty columns definition
   empty_df <- data.frame(
@@ -161,6 +186,24 @@ fetch_climate_data <- function(
     ITU_MED = numeric(0),
     ITU_MAX = numeric(0),
     stringsAsFactors = FALSE
+  )
+
+  if (status >= 400L) {
+    warning(
+      "INMET API error (HTTP ", status,
+      ") for station ", station_code
+    )
+    return(empty_df)
+  }
+
+  raw <- httr2$resp_body_string(resp)
+  if (nchar(raw) < 3L) {
+    return(empty_df)
+  }
+
+  data <- jsonlite$fromJSON(
+    raw,
+    simplifyVector = TRUE
   )
 
   if (
@@ -232,6 +275,32 @@ fetch_climate_data <- function(
     0.8 * df$TEMP_MAX + itu_term_max + 46.3
   )
 
-
   df
+}
+
+#' Apply a spatial buffer to a polygon.
+#'
+#' Transforms to a projected CRS (EPSG:5880,
+#' SIRGAS 2000 / Brazil Polyconic) for metric
+#' buffering, then transforms back to WGS84.
+#'
+#' @param roi_sf An `sf` polygon object.
+#' @param buffer_km Numeric buffer in kilometers.
+#' @return An `sf` polygon (buffered) in WGS84.
+#' @export
+buffer_polygon <- function(roi_sf, buffer_km) {
+  # Normalize to WGS84 first
+  roi_sf <- sf$st_transform(roi_sf, 4326L)
+
+  if (buffer_km <= 0) {
+    return(roi_sf)
+  }
+
+  # Project to metric CRS for buffering
+  projected <- sf$st_transform(roi_sf, 5880L)
+  buffered <- sf$st_buffer(
+    projected,
+    dist = buffer_km * 1000
+  )
+  sf$st_transform(buffered, 4326L)
 }

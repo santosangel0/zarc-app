@@ -187,10 +187,10 @@ describe("get_stations()", {
     expect_equal(nrow(stations), 2L)
   })
 
-  it("uses SIRGAS 2000 CRS", {
+  it("uses WGS84 CRS", {
     stations <- inmet$get_stations()
     crs_code <- sf$st_crs(stations)$epsg
-    expect_equal(crs_code, 4674L)
+    expect_equal(crs_code, 4326L)
   })
 })
 
@@ -208,7 +208,7 @@ describe("filter_stations()", {
           c(-50.0, -16.0),
           c(-50.0, -17.0)
         ))),
-        crs = 4674L
+        crs = 4326L
       )
     )
 
@@ -236,7 +236,7 @@ describe("filter_stations()", {
           c(0.0, 1.0),
           c(0.0, 0.0)
         ))),
-        crs = 4674L
+        crs = 4326L
       )
     )
 
@@ -368,5 +368,67 @@ describe("fetch_climate_data()", {
     )
     expect_s3_class(result, "data.frame")
     expect_equal(nrow(result), 0L)
+  })
+})
+
+describe("buffer_polygon()", {
+  it("returns same polygon when buffer is 0", {
+    roi <- sf$st_sf(
+      geometry = sf$st_sfc(
+        sf$st_polygon(list(rbind(
+          c(-50.0, -17.0),
+          c(-48.0, -17.0),
+          c(-48.0, -16.0),
+          c(-50.0, -16.0),
+          c(-50.0, -17.0)
+        ))),
+        crs = 4326L
+      )
+    )
+    result <- inmet$buffer_polygon(roi, 0)
+    expect_s3_class(result, "sf")
+    expect_equal(
+      sf$st_area(result),
+      sf$st_area(roi)
+    )
+  })
+
+  it("returns larger polygon when buffer > 0", {
+    roi <- sf$st_sf(
+      geometry = sf$st_sfc(
+        sf$st_polygon(list(rbind(
+          c(-50.0, -17.0),
+          c(-48.0, -17.0),
+          c(-48.0, -16.0),
+          c(-50.0, -16.0),
+          c(-50.0, -17.0)
+        ))),
+        crs = 4326L
+      )
+    )
+    buffered <- inmet$buffer_polygon(roi, 10)
+    expect_s3_class(buffered, "sf")
+    area_orig <- sf$st_area(roi)
+    area_buff <- sf$st_area(buffered)
+    expect_true(area_buff > area_orig)
+  })
+
+  it("preserves CRS EPSG:4674", {
+    roi <- sf$st_sf(
+      geometry = sf$st_sfc(
+        sf$st_polygon(list(rbind(
+          c(-50.0, -17.0),
+          c(-48.0, -17.0),
+          c(-48.0, -16.0),
+          c(-50.0, -16.0),
+          c(-50.0, -17.0)
+        ))),
+        crs = 4326L
+      )
+    )
+    buffered <- inmet$buffer_polygon(roi, 25)
+    expect_equal(
+      sf$st_crs(buffered)$epsg, 4326L
+    )
   })
 })
