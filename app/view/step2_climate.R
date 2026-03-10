@@ -243,8 +243,15 @@ server <- function(id, app_state) {
           )
       })
 
+    # Track if map is fully rendered to prevent proxy updates on hidden/0x0 map
+    map_ready <- shiny$reactiveVal(FALSE)
+    shiny$observeEvent(input$climate_map_bounds, {
+      map_ready(TRUE)
+    })
+
     # Update map when buffer/stations change
     shiny$observe({
+      shiny$req(map_ready())
       roi <- original_roi()
       buf_roi <- buffered_roi()
       stations <- filtered()
