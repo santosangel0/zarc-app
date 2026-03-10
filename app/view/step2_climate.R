@@ -12,6 +12,7 @@ box::use(
   sf,
   DT,
   app / logic / inmet,
+  app / view / climate_data_view,
 )
 
 #' Step 2 Climate UI
@@ -136,6 +137,13 @@ ui <- function(id) {
                 ns("stations_table")
               )
             )
+          ),
+          bslib$nav_panel(
+            title = shiny$tags$span(
+              shiny$icon("database"),
+              " Dados"
+            ),
+            climate_data_view$ui(ns("climate_data"))
           )
         )
       )
@@ -153,6 +161,8 @@ server <- function(id, app_state) {
     input, output, session
   ) {
     ns <- session$ns
+
+    climate_data_view$server("climate_data", app_state)
 
     # ── Expose region status for cond. panel ──
     output$has_region <- shiny$reactive({
