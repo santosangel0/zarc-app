@@ -108,22 +108,29 @@ get_stations <- function() {
 filter_stations <- function(
   stations_sf, roi_sf
 ) {
-  # Normalize both to WGS84 (EPSG:4326)
-  if (!is.na(sf$st_crs(stations_sf))) {
+  # Project both sets to a planar CRS for Brazil (EPSG:5880)
+  # This bypasses s2 spherical geometry errors on complex borders.
+  if (
+    is.na(sf$st_crs(stations_sf)) ||
+      sf$st_crs(stations_sf)$epsg != 5880L
+  ) {
     stations_sf <- sf$st_transform(
-      stations_sf, 4326L
+      stations_sf, 5880L
     )
   }
-  if (!is.na(sf$st_crs(roi_sf))) {
+  if (
+    is.na(sf$st_crs(roi_sf)) ||
+      sf$st_crs(roi_sf)$epsg != 5880L
+  ) {
     roi_sf <- sf$st_transform(
-      roi_sf, 4326L
+      roi_sf, 5880L
     )
   }
 
-  # Ensure valid geometries
+  # Ensure valid geometries on the flat plane
   roi_sf <- sf$st_make_valid(roi_sf)
 
-  # Spatial join (inner)
+  # Spatial join (inner) using the GEOS planar engine
   joined <- suppressMessages(
     sf$st_join(
       stations_sf, roi_sf,
@@ -132,7 +139,8 @@ filter_stations <- function(
     )
   )
 
-  joined
+  # Transform back to WGS84 for leaflet
+  sf$st_transform(joined, 4326L)
 }
 
 #' Fetch daily climate data for a station.
