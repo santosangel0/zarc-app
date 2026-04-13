@@ -4,7 +4,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
-FROM rocker/r-ver:4.4.1 AS builder
+FROM rocker/r-ver:4.5.2 AS builder
 
 # System dependencies for spatial packages (sf, terra)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +31,7 @@ COPY renv/ renv/
 RUN Rscript -e "renv::restore(prompt = FALSE)"
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM rocker/r-ver:4.4.1 AS runtime
+FROM rocker/r-ver:4.5.2 AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdal-dev \
@@ -41,6 +41,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libcurl4-openssl-dev \
     libxml2-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -51,6 +54,8 @@ COPY --from=builder /build/renv.lock renv.lock
 COPY --from=builder /build/.Rprofile .Rprofile
 
 # Copy application code
+COPY app.R app.R
+COPY config.yml config.yml
 COPY dependencies.R dependencies.R
 COPY rhino.yml rhino.yml
 COPY app/ app/
