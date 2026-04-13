@@ -28,6 +28,10 @@ COPY dependencies.R dependencies.R
 COPY .Rprofile .Rprofile
 COPY renv/ renv/
 
+# Disable renv cache so packages are installed directly into renv/library/
+# instead of as symlinks (which break across multi-stage COPY).
+ENV RENV_CONFIG_CACHE_ENABLED=FALSE
+
 RUN Rscript -e "renv::restore(prompt = FALSE)"
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
