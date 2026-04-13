@@ -1,0 +1,758 @@
+---
+title: "Pipeline de Dados INMET → Parquet/DuckDB"
+subtitle: "Ingestão resiliente, limpeza e armazenamento de dados meteorológicos históricos do INMET (2000–2025)"
+author: "Angelo Santos"
+date: today
+lang: pt
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-title: "Índice"
+    code-fold: false
+    code-tools: true
+    code-line-numbers: true
+    embed-resources: true
+    df-print: paged
+    fig-width: 10
+    fig-height: 6
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: false
+editor_options:
+  chunk_output_type: console
+---
+
+## Objetivo
+
+Este documento descreve — e executa — o pipeline de engenharia de dados que
+alimenta o **zarc-app**. O objetivo é substituir as chamadas ao vivo à API do
+INMET por um banco Parquet local altamente comprimido, consultável via
+**DuckDB**, garantindo desempenho máximo no Shiny.
+
+### Arquitetura
+
+::: {.callout-important}
+## Por que NÃO usar `COPY ... APPEND TRUE`?
+
+Arquivos Parquet são **imutáveis por design**. O DuckDB não suporta append
+nativo a um arquivo `.parquet` físico. A tentativa anterior falhava
+silenciosamente ou sobrescrevia o arquivo.
+
+**Solução**: Acumular todos os dados em uma tabela SQL dentro de um banco
+DuckDB persistente (`inmet_temp.duckdb`), e exportar para Parquet
+**uma única vez** ao final do loop.
+:::
+
+```{mermaid}
+%%| label: fig-pipeline
+%%| fig-cap: "Fluxo macro do pipeline"
+flowchart LR
+  A["API INMET<br/>(estações)"] --> B["estacoes.parquet"]
+  C["Portal INMET<br/>(ZIPs históricos)"] --> D["D:/Angelo/RAW_INMET/<br/>*.zip"]
+  D --> E["Schema<br/>Investigation"]
+  E --> F["read_inmet_csv()<br/>(iconv + skip)"]
+  F --> G["DuckDB<br/>inmet_temp.duckdb<br/>(tabela_clima)"]
+  G -->|"COPY TO<br/>(uma única vez)"| H["inmet_historico.parquet"]
+  B --> I["zarc-app<br/>(Shiny)"]
+  H --> I
+```
+
+---
+
+## 0 — Pacotes e configuração global
+
+```{r}
+#| label: setup
+#| message: false
+
+# ── Pacotes ──────────────────────────────────────────────────────────────────
+library(duckdb)
+library(DBI)
+library(httr2)
+library(jsonlite)
+library(dplyr)
+library(stringr)
+library(stringi)
+library(readr)
+library(glue)
+library(archive)
+
+# ── Paths ────────────────────────────────────────────────────────────────────
+BASE_DIR          <- "D:/Angelo"
+RAW_DIR           <- file.path(BASE_DIR, "RAW_INMET")
+PARQUET_ESTACOES  <- file.path(BASE_DIR, "estacoes.parquet")
+PARQUET_HISTORICO <- file.path(BASE_DIR, "inmet_historico.parquet")
+DUCKDB_TEMP       <- file.path(BASE_DIR, "inmet_temp.duckdb")
+
+dir.create(RAW_DIR, recursive = TRUE, showWarnings = FALSE)
+
+YEARS <- 2000:2025
+
+# ── User-Agent (necessário para a API INMET) ────────────────────────────────
+INMET_UA <- paste0(
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ",
+  "AppleWebKit/537.36 (KHTML, like Gecko) ",
+  "Chrome/120.0.0.0 Safari/537.36"
+)
+
+cat("✔ Setup concluído.\n")
+```
+
+---
+
+## 1 — Metadados das estações (API → Parquet)
+
+O endpoint `https://apitempo.inmet.gov.br/estacoes/T` retorna um JSON com
+**todas** as estações automáticas do INMET.
+
+```{r}
+#| label: fetch-stations
+
+resp <- request("https://apitempo.inmet.gov.br/estacoes/T") |>
+  req_headers(`User-Agent` = INMET_UA, Accept = "application/json") |>
+  req_retry(max_tries = 3) |>
+  req_timeout(60) |>
+  req_perform()
+
+stopifnot("Falha HTTP ao buscar estações" = resp_status(resp) < 400L)
+
+estacoes <- resp |>
+  resp_body_string() |>
+  fromJSON(simplifyVector = TRUE) |>
+  as_tibble()
+
+cat(glue("Estações retornadas pela API: {nrow(estacoes)}"), "\n")
+```
+
+### 1.1 — Limpeza de coordenadas
+
+```{r}
+#| label: clean-stations
+
+estacoes <- estacoes |>
+  mutate(
+    VL_LATITUDE  = as.numeric(VL_LATITUDE),
+    VL_LONGITUDE = as.numeric(VL_LONGITUDE)
+  ) |>
+  filter(!is.na(VL_LATITUDE), !is.na(VL_LONGITUDE))
+
+cat(glue("Estações válidas após limpeza: {nrow(estacoes)}"), "\n")
+```
+
+### 1.2 — Gravação em Parquet via DuckDB
+
+```{r}
+#| label: write-stations-parquet
+
+con <- dbConnect(duckdb())
+duckdb_register(con, "estacoes_view", estacoes)
+
+dbExecute(con, glue(
+  "COPY estacoes_view TO '{PARQUET_ESTACOES}'
+   (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 100000)"
+))
+
+n <- dbGetQuery(con, glue(
+  "SELECT count(*) AS n FROM read_parquet('{PARQUET_ESTACOES}')"
+))$n
+cat(glue("✔ {n} estações gravadas em {PARQUET_ESTACOES}"), "\n")
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+---
+
+## 2 — Download dos arquivos históricos (2000–2025)
+
+```{r}
+#| label: download-historical
+
+for (year in YEARS) {
+  zip_file <- file.path(RAW_DIR, paste0(year, ".zip"))
+
+  if (file.exists(zip_file)) {
+    cat(glue("⏭ {year}.zip já existe — pulando download."), "\n")
+    next
+  }
+
+  url <- glue("https://portal.inmet.gov.br/uploads/dadoshistoricos/{year}.zip")
+  cat(glue("⬇ Baixando {year}.zip ..."), "\n")
+
+  tryCatch({
+    resp <- request(url) |>
+      req_headers(`User-Agent` = INMET_UA) |>
+      req_retry(max_tries = 3) |>
+      req_timeout(300) |>
+      req_perform()
+
+    if (resp_status(resp) < 400L) {
+      writeBin(resp_body_raw(resp), zip_file)
+      cat(glue("  ✔ {year}.zip salvo ({round(file.size(zip_file)/1e6, 1)} MB)"), "\n")
+    } else {
+      warning(glue("HTTP {resp_status(resp)} para {year}.zip"))
+    }
+  }, error = function(e) {
+    warning(glue("Erro ao baixar {year}.zip: {e$message}"))
+  })
+}
+```
+
+---
+
+## 3 — Investigação multi-ano do schema (STEP 1)
+
+::: {.callout-warning}
+## Passo diagnóstico obrigatório
+
+Os CSVs do INMET mudaram de formato ao longo de 25 anos. Antes de construir o
+parser, precisamos detectar:
+
+1. **Encoding** — latin1 nos primeiros anos, possivelmente UTF-8 nos recentes
+2. **Posição do header** — A linha "Data;Hora..." pode estar na 9ª ou 10ª linha
+3. **Nomes de colunas** — Unidades e acentos mudam (ex: `(mm)` vs `(mB)`)
+:::
+
+### 3.1 — Script de diagnóstico
+
+Para cada ano, inspecionamos as primeiras 15 linhas de **um** CSV amostrado
+do ZIP, registrando encoding, posição do header e nomes das colunas.
+
+```{r}
+#| label: schema-investigation
+
+zip_files <- list.files(RAW_DIR, pattern = "\\.zip$", full.names = TRUE)
+
+# Tabela de resultados do diagnóstico
+diag_results <- list()
+
+for (zip_path in zip_files) {
+  year_label <- tools::file_path_sans_ext(basename(zip_path))
+
+  tryCatch({
+    zip_contents <- archive(zip_path)
+    csv_entries <- zip_contents$path[
+      str_detect(zip_contents$path, regex("\\.csv$", ignore_case = TRUE))
+    ]
+    if (length(csv_entries) == 0) next
+
+    # Pega o primeiro CSV como amostra
+    sample_csv <- csv_entries[1]
+
+    # ── Leitura raw (bytes) ──────────────────────────────────────────────────
+    con_csv <- archive_read(zip_path, file = sample_csv, mode = "rb")
+    raw_bytes <- readBin(con_csv, raw(), n = 4096)
+    close(con_csv)
+
+    raw_text_latin1 <- iconv(
+      rawToChar(raw_bytes), from = "latin1", to = "UTF-8", sub = "byte"
+    )
+    raw_text_utf8 <- iconv(
+      rawToChar(raw_bytes), from = "UTF-8", to = "UTF-8", sub = ""
+    )
+
+    # Heurística: se a conversão UTF-8 perde bytes, o arquivo é latin1
+    encoding_guess <- if (nchar(raw_text_utf8) < nchar(raw_text_latin1) * 0.95) {
+      "latin1"
+    } else {
+      "UTF-8"
+    }
+
+    # ── Linhas de inspeção ───────────────────────────────────────────────────
+    lines <- strsplit(raw_text_latin1, "\r?\n")[[1]][1:15]
+    lines <- lines[!is.na(lines)]
+
+    # ── Posição do header ────────────────────────────────────────────────────
+    # Detecta ambos formatos:
+    #   Novo (2020+): "Data;Hora UTC;..."
+    #   Antigo (2000-2019): "DATA (YYYY-MM-DD);HORA (UTC);..."
+    # Evita match com "DATA DE FUNDACAO:;" (metadata)
+    header_idx <- which(str_detect(lines, regex("^Data[;(]|^DATA \\(", ignore_case = TRUE)))
+    header_line <- if (length(header_idx) > 0) header_idx[1] else NA_integer_
+
+    # ── Nomes das colunas ────────────────────────────────────────────────────
+    col_names <- if (!is.na(header_line)) {
+      strsplit(lines[header_line], ";")[[1]]
+    } else {
+      character(0)
+    }
+
+    diag_results[[year_label]] <- tibble(
+      year         = year_label,
+      file_sample  = basename(sample_csv),
+      encoding     = encoding_guess,
+      header_at    = header_line,
+      n_columns    = length(col_names),
+      first_3_cols = paste(head(col_names, 3), collapse = " | "),
+      last_3_cols  = paste(tail(col_names, 3), collapse = " | ")
+    )
+
+    cat(glue(
+      "{year_label}: encoding={encoding_guess}, header=line {header_line}, ",
+      "ncols={length(col_names)}"
+    ), "\n")
+
+  }, error = function(e) {
+    cat(glue("{year_label}: ERRO — {e$message}"), "\n")
+  })
+}
+```
+
+### 3.2 — Tabela consolidada do diagnóstico
+
+```{r}
+#| label: diag-table
+
+diag_df <- bind_rows(diag_results)
+
+knitr::kable(
+  diag_df,
+  caption = "Diagnóstico de schema por ano (2000–2025)",
+  col.names = c(
+    "Ano", "Arquivo amostra", "Encoding", "Header (linha)",
+    "Nº colunas", "Primeiras 3 colunas", "Últimas 3 colunas"
+  )
+)
+```
+
+::: {.callout-note}
+## Resultados esperados
+
+- **Encoding**: Tipicamente `latin1` para 2000–~2019, `UTF-8` para anos recentes.
+- **Header**: Geralmente na **linha 9** (8 linhas de metadata + header).
+- **Colunas**: O número de colunas variou ao longo dos anos; a normalização
+  de nomes no Step 4 garante schema consistente.
+:::
+
+---
+
+## 4 — Função de leitura resiliente
+
+### 4.1 — Normalização canônica de nomes de colunas
+
+Para fundir dados de 25 anos com nomes variáveis, normalizamos para um
+schema canônico: **minúsculas, sem acentos, sem caracteres especiais**.
+
+```{r}
+#| label: normalize-colnames
+
+#' Normaliza nome de coluna para forma canônica
+#' @param x Vetor de nomes de colunas
+#' @return Vetor normalizado (lowercase, sem acento, sem especial)
+normalize_colnames <- function(x) {
+  x |>
+    stri_trans_general("Latin-ASCII") |>    # ã → a, ç → c
+    str_to_lower() |>                       # MAIÚSCULA → minúscula
+    str_replace_all("[^a-z0-9]", "_") |>    # Substitui não-alfanum por _
+    str_replace_all("_+", "_") |>           # Colapsa underscores múltiplos
+    str_remove("^_") |>                     # Remove _ no início
+    str_remove("_$")                        # Remove _ no final
+}
+```
+
+### 4.2 — Função `read_inmet_csv()`
+
+Função resiliente que:
+
+1. Lê bytes brutos via `archive_read()` → `readBin()` (evita erros de encoding do `readLines`)
+2. Converte para UTF-8 com `iconv(..., sub = "byte")` para nunca perder dados
+3. Detecta dinamicamente a posição do header (linha que começa com "Data;")
+4. Faz o parse via `read_csv2()` de um `textConnection` já em UTF-8
+5. Limpa nomes de colunas com `normalize_colnames()`
+6. Extrai `CD_ESTACAO` do nome do arquivo
+
+```{r}
+#| label: parse-function
+
+#' Lê um CSV do INMET de dentro de um ZIP, retornando tibble limpo
+#'
+#' @param zip_path Caminho absoluto do ZIP
+#' @param csv_name Nome do arquivo CSV interno ao ZIP
+#' @return tibble com CD_ESTACAO adicionada, ou NULL em caso de erro
+read_inmet_csv <- function(zip_path, csv_name) {
+  tryCatch({
+    # ── 1. Extrai código da estação do nome do arquivo ───────────────────────
+    # Padrão: INMET_XX_UF_A001_NOME_dd-mm-aaaa_T_dd-mm-aaaa.CSV
+    station_code <- str_extract(csv_name, "[A-Z]\\d{3}")
+    if (is.na(station_code)) {
+      warning(glue("Codigo nao extraido de: {csv_name}"))
+      return(NULL)
+    }
+
+    # ── 2. Leitura raw de bytes (à prova de encoding) ───────────────────────
+    con_raw <- archive_read(zip_path, file = csv_name, mode = "rb")
+    raw_bytes <- readBin(con_raw, raw(), n = 50e6)  # até 50 MB
+    close(con_raw)
+
+    # Converte para UTF-8, substituindo bytes inválidos por hex literal
+    text_utf8 <- iconv(
+      rawToChar(raw_bytes),
+      from = "latin1",
+      to   = "UTF-8",
+      sub  = "byte"
+    )
+
+    # ── 3. Divide em linhas e detecta posição do header ──────────────────────
+    all_lines <- strsplit(text_utf8, "\r?\n")[[1]]
+
+    # Detecta ambos formatos:
+    #   Novo (2020+): "Data;Hora UTC;..."
+    #   Antigo (2000-2019): "DATA (YYYY-MM-DD);HORA (UTC);..."
+    header_idx <- which(str_detect(
+      all_lines[1:min(15, length(all_lines))],
+      regex("^Data[;(]|^DATA \\(", ignore_case = TRUE)
+    ))
+
+    if (length(header_idx) == 0) {
+      warning(glue("Header 'Data;' nao encontrado em {csv_name}"))
+      return(NULL)
+    }
+    skip_n <- header_idx[1] - 1  # tipicamente 8
+
+    # ── 4. Reconecta as linhas (do header em diante) como texto ──────────────
+    data_text <- paste(all_lines[header_idx[1]:length(all_lines)], collapse = "\n")
+
+    # ── 5. Parse com read_csv2 a partir de textConnection puro UTF-8 ─────────
+    df <- read_csv2(
+      I(data_text),
+      locale         = locale(decimal_mark = ",", grouping_mark = "."),
+      na             = c("", "NA", "-9999", "-9999,0"),
+      show_col_types = FALSE,
+      name_repair    = "unique"
+    )
+
+    # Remove colunas fantasma (geradas por `;` trailing)
+    df <- df |> select(!starts_with("..."))
+
+    if (nrow(df) == 0) return(NULL)
+
+    # ── 6. Normaliza nomes de colunas para schema canônico ───────────────────
+    names(df) <- normalize_colnames(names(df))
+
+    # Harmoniza diferenças de schema entre anos:
+    #   2000-2019: "DATA (YYYY-MM-DD)" → "data_yyyy_mm_dd"
+    #   2020+:     "Data"              → "data"
+    names(df) <- str_replace(names(df), "^data_yyyy_mm_dd$", "data")
+
+    # Remove colunas residuais com nomes vazios ou numéricos puros
+    valid_cols <- !grepl("^_*\\d+$", names(df)) & nchar(names(df)) > 0
+    df <- df[, valid_cols, drop = FALSE]
+
+    df$cd_estacao <- station_code
+
+    df
+
+  }, error = function(e) {
+    warning(glue("Erro ao ler {csv_name}: {e$message}"))
+    NULL
+  })
+}
+```
+
+---
+
+## 5 — Cross-reference com metadados das estações
+
+Carregamos os códigos do catálogo oficial de estações (Step 1) para filtrar
+apenas estações reconhecidas durante a ingestão.
+
+```{r}
+#| label: load-station-lookup
+
+con <- dbConnect(duckdb())
+
+station_lookup <- dbGetQuery(con, glue(
+  "SELECT DISTINCT CD_ESTACAO FROM read_parquet('{PARQUET_ESTACOES}')"
+))$CD_ESTACAO
+
+cat(glue("Códigos de estação no catálogo: {length(station_lookup)}"), "\n")
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+---
+
+## 6 — Ingestão em lote (Batch-by-Year → DuckDB → Parquet)
+
+::: {.callout-important}
+## Estratégia de acumulação
+
+1. **Banco persistente** `inmet_temp.duckdb` no disco — suporta `dbWriteTable(append=TRUE)`
+2. **Batch por ano** — junta todos os CSVs de um ano via `bind_rows()`, faz
+   um único `dbWriteTable()` por ano → minimiza I/O no Windows
+3. **Export final** — `COPY tabela_clima TO ... (PARQUET, ZSTD)` **fora do loop**
+:::
+
+```{r}
+#| label: ingest-historical
+
+zip_files <- list.files(RAW_DIR, pattern = "\\.zip$", full.names = TRUE)
+cat(glue("ZIPs encontrados: {length(zip_files)}"), "\n\n")
+
+# ── Banco DuckDB persistente no disco ───────────────────────────────────────
+con <- dbConnect(duckdb(), dbdir = DUCKDB_TEMP)
+
+# Limpa tabela prévia se existir (para re-execução idempotente)
+if (dbExistsTable(con, "tabela_clima")) {
+  dbRemoveTable(con, "tabela_clima")
+  cat("♻ Tabela tabela_clima removida (re-execução).\n")
+}
+
+# Contadores globais
+total_rows  <- 0
+total_files <- 0
+
+for (zip_path in zip_files) {
+  year_label <- tools::file_path_sans_ext(basename(zip_path))
+  cat(glue("─── {year_label} ───"), "\n")
+
+  # ── Lista CSVs dentro do ZIP ─────────────────────────────────────────────
+  zip_contents <- archive(zip_path)
+  csv_entries <- zip_contents$path[
+    str_detect(zip_contents$path, regex("\\.csv$", ignore_case = TRUE))
+  ]
+  cat(glue("  CSVs encontrados: {length(csv_entries)}"), "\n")
+
+  # ── Acumula todos os CSVs do ano em memória ──────────────────────────────
+  year_batch <- list()
+
+  for (csv_name in csv_entries) {
+    df <- read_inmet_csv(zip_path, csv_name)
+    if (is.null(df) || nrow(df) == 0) next
+
+    # Cross-reference: manter apenas estações catalogadas
+    if (!df$cd_estacao[1] %in% station_lookup) next
+
+    year_batch[[length(year_batch) + 1]] <- df
+    total_files <- total_files + 1
+  }
+
+  if (length(year_batch) == 0) {
+    cat("  ⚠ Nenhum CSV válido neste ano.\n\n")
+    next
+  }
+
+  # ── Consolida o ano e faz UM ÚNICO dbWriteTable ──────────────────────────
+  year_df <- bind_rows(year_batch)
+  total_rows <- total_rows + nrow(year_df)
+
+  # Força todos os tipos para character antes do append para evitar
+  # conflitos de schema entre anos (decimais vs integer, etc.)
+  # O DuckDB reconverterá na hora da query.
+  year_df <- year_df |> mutate(across(everything(), as.character))
+
+  dbWriteTable(con, "tabela_clima", year_df, append = TRUE)
+
+  cat(glue(
+    "  ✔ {nrow(year_df)} linhas ({length(year_batch)} CSVs) → tabela_clima"
+  ), "\n")
+  cat(glue(
+    "  Acumulado total: {format(total_rows, big.mark = '.')} linhas\n\n"
+  ))
+
+  # Libera memória do batch
+
+  rm(year_batch, year_df)
+  gc(verbose = FALSE)
+}
+
+cat(glue("\n── Todos os anos processados: {total_files} CSVs, ",
+         "{format(total_rows, big.mark = '.')} linhas na tabela_clima ──\n\n"))
+```
+
+### 6.1 — Exportação final para Parquet (FORA do loop)
+
+Uma única operação `COPY` gera o Parquet comprimido final.
+
+```{r}
+#| label: export-parquet
+
+cat("Exportando tabela consolidada para Parquet (ZSTD)...\n")
+
+# Remove Parquet anterior se existir
+if (file.exists(PARQUET_HISTORICO)) file.remove(PARQUET_HISTORICO)
+
+dbExecute(con, glue(
+  "COPY tabela_clima TO '{PARQUET_HISTORICO}'
+   (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 100000)"
+))
+
+parquet_mb <- round(file.size(PARQUET_HISTORICO) / 1e6, 1)
+cat(glue("✔ Parquet gerado: {PARQUET_HISTORICO} ({parquet_mb} MB)"), "\n")
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+### 6.2 — Limpeza do banco temporário
+
+O arquivo `.duckdb` não é mais necessário após a exportação.
+
+```{r}
+#| label: cleanup-duckdb
+
+# Remove o banco temporário e seus arquivos WAL
+temp_files <- list.files(
+  BASE_DIR,
+  pattern = "inmet_temp\\.duckdb",
+  full.names = TRUE
+)
+file.remove(temp_files)
+cat(glue("🗑 Removidos {length(temp_files)} arquivo(s) temporários."), "\n")
+```
+
+---
+
+## 7 — Validação do Parquet final
+
+### 7.1 — Estatísticas gerais
+
+```{r}
+#| label: validate-parquet
+
+con <- dbConnect(duckdb())
+
+n_rows <- dbGetQuery(con, glue(
+  "SELECT count(*) AS n FROM read_parquet('{PARQUET_HISTORICO}')"
+))$n
+
+n_stations <- dbGetQuery(con, glue(
+  "SELECT count(DISTINCT cd_estacao) AS n FROM read_parquet('{PARQUET_HISTORICO}')"
+))$n
+
+span <- dbGetQuery(con, glue(
+  "SELECT
+     min(data) AS data_min,
+     max(data) AS data_max
+   FROM read_parquet('{PARQUET_HISTORICO}')"
+))
+
+cat(glue(
+  "📊 Parquet final: {PARQUET_HISTORICO}\n",
+  "   Linhas:    {format(n_rows, big.mark = '.')}\n",
+  "   Estações:  {n_stations}\n",
+  "   Período:   {span$data_min} → {span$data_max}\n",
+  "   Tamanho:   {round(file.size(PARQUET_HISTORICO) / 1e6, 1)} MB"
+), "\n")
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+### 7.2 — Schema do Parquet
+
+```{r}
+#| label: schema-final
+
+con <- dbConnect(duckdb())
+
+schema <- dbGetQuery(con, glue(
+  "DESCRIBE SELECT * FROM read_parquet('{PARQUET_HISTORICO}')"
+))
+
+knitr::kable(
+  schema,
+  caption = "Schema do Parquet histórico (colunas normalizadas)"
+)
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+### 7.3 — Benchmark de query analítica
+
+Simula uma query típica do Shiny — filtrar por estação e período.
+
+```{r}
+#| label: benchmark-query
+
+con <- dbConnect(duckdb())
+
+sample_station <- dbGetQuery(con, glue(
+  "SELECT cd_estacao FROM read_parquet('{PARQUET_HISTORICO}') LIMIT 1"
+))$cd_estacao
+
+bench_time <- system.time({
+  result <- dbGetQuery(con, glue(
+    "SELECT *
+     FROM read_parquet('{PARQUET_HISTORICO}')
+     WHERE cd_estacao = '{sample_station}'
+     ORDER BY data"
+  ))
+})
+
+cat(glue(
+  "⚡ Estação {sample_station}: {nrow(result)} linhas em ",
+  "{round(bench_time['elapsed'], 3)}s"
+), "\n")
+
+dbDisconnect(con, shutdown = TRUE)
+```
+
+### 7.4 — Comparação de compressão
+
+```{r}
+#| label: compression-stats
+
+zip_total <- sum(file.size(
+  list.files(RAW_DIR, pattern = "\\.zip$", full.names = TRUE)
+))
+
+parquet_size <- file.size(PARQUET_HISTORICO)
+
+cat(glue(
+  "📦 ZIPs brutos:      {round(zip_total / 1e9, 2)} GB\n",
+  "📄 Parquet (ZSTD):   {round(parquet_size / 1e9, 2)} GB\n",
+  "📉 Razão compressão: {round(zip_total / parquet_size, 1)}×"
+), "\n")
+```
+
+---
+
+## 8 — Integração com o zarc-app (Shiny)
+
+Para consumir o Parquet no Shiny, basta substituir as chamadas HTTP por
+queries DuckDB. Abaixo, um drop-in replacement para `fetch_climate_data()`:
+
+```{r}
+#| label: shiny-integration
+#| eval: false
+
+#' Lê dados climáticos do Parquet local (substitui API INMET)
+#' @param station_code Código da estação (ex: "A001")
+#' @param start_date Data inicial (YYYY-MM-DD)
+#' @param end_date Data final (YYYY-MM-DD)
+#' @return data.frame compatível com o pipeline existente
+fetch_climate_data_local <- function(station_code, start_date, end_date) {
+  con <- dbConnect(duckdb(), read_only = TRUE)
+  on.exit(dbDisconnect(con, shutdown = TRUE))
+
+  query <- glue::glue(
+    "SELECT *
+     FROM read_parquet('D:/Angelo/inmet_historico.parquet')
+     WHERE cd_estacao = '{station_code}'
+       AND data >= '{start_date}'
+       AND data <= '{end_date}'
+     ORDER BY data"
+  )
+
+  dbGetQuery(con, query)
+}
+```
+
+::: {.callout-tip}
+## Performance no Shiny
+
+O Parquet com DuckDB oferece **predicate pushdown** e **column pruning**:
+apenas as linhas e colunas solicitadas são lidas do disco.
+Queries que antes levavam segundos na API retornam em **milissegundos**.
+:::
+
+---
+
+## Referências
+
+- [INMET — Dados Históricos](https://portal.inmet.gov.br/dadoshistoricos)
+- [DuckDB — Parquet Support](https://duckdb.org/docs/data/parquet/overview)
+- [Buffington, D.E. et al. (1977) — BGHI](https://doi.org/10.13031/2013.35652)
+- [zarc-app — Repositório GitHub](https://github.com/santosangel0/zarc-app)
