@@ -9,7 +9,10 @@
 
 This wiki is a persistent, compounding knowledge base for research on **agricultural zoning, climate risk, and dairy farming in Brazil**. It sits alongside the `zarc-app` codebase — a Rhino/Shiny application for geographic intelligence on milk production.
 
-The wiki captures knowledge that lives *outside* the code: literature reviews, dataset documentation, policy context, methodological notes, institutional knowledge about INMET/IBGE/EMBRAPA/MAPA, and the evolving research synthesis.
+The wiki captures two kinds of knowledge:
+
+1. **Research domain** — literature reviews, dataset documentation, policy context, methodological notes, institutional knowledge about INMET/IBGE/EMBRAPA/MAPA, and the evolving research synthesis.
+2. **Application internals** — zarc-app architecture, data pipelines (INMET ingestion, IBGE/SIDRA fetching, parquet processing), module design, deployment details, and data handling decisions. The wiki is the living technical documentation for the app — not duplicating code comments, but explaining the *why* behind pipelines, data flows, and design choices.
 
 ---
 
@@ -26,6 +29,7 @@ wiki/
     ├── sources/       # One summary page per ingested source
     ├── entities/      # Institutions, datasets, people, places, programs
     ├── concepts/      # Topics, methods, theories, policies
+    ├── app/           # zarc-app architecture, pipelines, data handling
     └── analyses/      # Query results, comparisons, syntheses worth keeping
 ```
 
@@ -45,7 +49,7 @@ Every page in `pages/` uses this template:
 ```markdown
 ---
 title: "Page Title"
-type: source | entity | concept | analysis
+type: source | entity | concept | app | analysis
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 sources: [list of source filenames that inform this page]
@@ -69,12 +73,13 @@ Content here. Use [[wiki-links]] for cross-references to other pages
 - Source pages: named after the source (e.g., `assad-2004-climate-risk-zoning.md`)
 - Entity pages: named after the entity (e.g., `embrapa.md`, `ibge-ppm.md`)
 - Concept pages: named after the concept (e.g., `agroclimatic-zoning.md`, `thermal-stress-dairy.md`)
+- App pages: named after the component or pipeline (e.g., `inmet-pipeline.md`, `ibge-sidra-integration.md`, `leaflet-choropleth.md`)
 
 ### Tags Vocabulary
 
 Use consistent tags. Preferred tags (expand as needed):
 
-`climate-risk` · `zoning` · `dairy` · `milk-production` · `pasture` · `thermal-stress` · `water-deficit` · `ZARC` · `INMET` · `IBGE` · `EMBRAPA` · `MAPA` · `remote-sensing` · `spatial-analysis` · `policy` · `methodology` · `dataset` · `Brazil` · `cerrado` · `atlantic-forest` · `semi-arid`
+`climate-risk` · `zoning` · `dairy` · `milk-production` · `pasture` · `thermal-stress` · `water-deficit` · `ZARC` · `INMET` · `IBGE` · `EMBRAPA` · `MAPA` · `remote-sensing` · `spatial-analysis` · `policy` · `methodology` · `dataset` · `Brazil` · `cerrado` · `atlantic-forest` · `semi-arid` · `pipeline` · `shiny` · `rhino` · `parquet` · `data-handling` · `architecture` · `deployment` · `docker` · `leaflet` · `API`
 
 ---
 
@@ -96,6 +101,20 @@ Triggered when the researcher adds a source to `raw/` and asks the LLM to proces
 8. Append an entry to `log.md`.
 
 **A single ingest should touch multiple pages.** The value is in integration, not just summarization. When a new source mentions EMBRAPA, update the EMBRAPA entity page. When it discusses thermal stress, update or create the thermal stress concept page. Connect the dots.
+
+### 1b. Ingest from Code
+
+Triggered when the researcher asks the LLM to document an app component, pipeline, or data flow.
+
+**Workflow:**
+
+1. Read the relevant source files in the `zarc-app` codebase (R modules, config, Dockerfile, etc.).
+2. Discuss design decisions and data flow with the researcher.
+3. Create or update an app page in `pages/app/`.
+4. Cross-reference with entity pages (datasets consumed), concept pages (methods used), and other app pages (upstream/downstream components).
+5. Update `index.md` and append to `log.md`.
+
+**Key principle:** app pages document the *why* and *how* — data flow diagrams, pipeline stages, input/output formats, design trade-offs. They do not duplicate code. They link to the codebase by file path (e.g., `app/logic/ibge.R`) so the reader can jump to the source.
 
 ### 2. Query
 
@@ -135,7 +154,7 @@ This wiki supports research at the intersection of:
 - **Dairy farming** — specifically milk production vulnerability to climate variability across Brazilian municipalities.
 - **Climate data** — INMET historical weather station data, remote sensing, agroclimatic indices.
 - **Geospatial analysis** — municipal-level spatial data from IBGE, choropleth mapping, spatial joins.
-- **The zarc-app itself** — an R Shiny application that visualizes this data. The wiki documents the *knowledge*; the app operationalizes it.
+- **The zarc-app itself** — an R Shiny application (Rhino framework) that operationalizes this data. The wiki documents both the domain knowledge *and* the app's technical internals: its data pipelines (INMET parquet ingestion, IBGE/SIDRA API integration), module architecture (`app/logic/`, `app/view/`), deployment (Docker multi-stage), and data handling decisions (spatial joins, parquet storage, caching strategies).
 
 ### Key Institutions
 

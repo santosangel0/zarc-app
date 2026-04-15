@@ -16,6 +16,10 @@
 
 *No concept pages yet.*
 
+## App
+
+*No app pages yet.*
+
 ## Analyses
 
 *No analysis pages yet.*
