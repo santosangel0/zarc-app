@@ -2,7 +2,7 @@
 title: "IBGE PPM — Pesquisa Pecuária Municipal"
 type: entity
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-04-17
 sources: ["ART+050_BJAER_JAN_2023.pdf"]
 tags: [IBGE, dataset, dairy, milk-production, Brazil]
 ---
@@ -33,4 +33,6 @@ PPM data provides the **production side** of the climate risk equation: which mu
 
 - [[inmet]]
 - [[embrapa]]
+- [[cileite]]
 - [[andrade-2023-thi-maps-southeast-brazil]]
+- [[dias-souza-2026-dairy-climate-minas-gerais]]

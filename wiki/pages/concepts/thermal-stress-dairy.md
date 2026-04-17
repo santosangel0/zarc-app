@@ -2,8 +2,8 @@
 title: "Thermal Stress in Dairy Cattle"
 type: concept
 created: 2026-04-15
-updated: 2026-04-15
-sources: ["ART+050_BJAER_JAN_2023.pdf"]
+updated: 2026-04-17
+sources: ["ART+050_BJAER_JAN_2023.pdf", "Impact of Heat Stress on Milk Yield.pdf", "Dairy farming and climate parameters.pdf"]
 tags: [thermal-stress, dairy, climate-risk, pasture]
 ---
 
@@ -31,9 +31,24 @@ Heat stress response is **breed-dependent** (Bernabucci et al. 2010; McManus et 
 
 ## Impact on Dairy Production
 
-- Milk yield declines when [[thi-temperature-humidity-index|THI]] ≥ 72.
+- Milk yield declines when [[thi-temperature-humidity-index|THI]] ≥ 72 (Du Preez et al. 1990; Kemer et al. 2020).
 - In southeastern Brazil, the correlation between summer THI and mesoregion-level milk productivity is r = 0.66 ([[andrade-2023-thi-maps-southeast-brazil|Andrade et al. 2023]]).
 - Reproductive performance also declines under heat stress (Rensis & Scaramuzzi 2003).
+
+### Genetic Perspective
+
+[[boonkum-2024-heat-stress-thai-holstein|Boonkum et al. (2024)]] demonstrated the **genetic antagonism** between production traits and heat tolerance in Thai–Holstein crossbred cattle:
+
+- THI threshold of **76** for Thai–Holstein (higher than the typical 72, due to local breed adaptation)
+- **Negative genetic correlations**: MY × heat tolerance (−0.26), FPR × heat tolerance (−0.48), CR × heat tolerance (−0.49)
+- **Conception rate** is the most environmentally sensitive trait (h² = 0.032), dropping further under severe heat stress
+- Higher percentage of Holstein genetics → steeper decline in all traits per unit THI increase
+
+This means selecting for higher production genetically undermines heat tolerance — a critical trade-off for breed selection in climate-vulnerable regions.
+
+### Precipitation as a Complementary Factor
+
+[[dias-souza-2026-dairy-climate-minas-gerais|Dias-Souza et al. (2026)]] found that in Minas Gerais, **precipitation explains 83% of milk production variation** (R² = 0.90), while temperature alone was not significant. This suggests that in regions with moderate temperatures (21–23°C), [[precipitation-dairy-production|water availability]] — via pasture quality — may be more limiting than heat stress.
 
 ## Management Implications
 
@@ -44,5 +59,8 @@ Heat stress response is **breed-dependent** (Bernabucci et al. 2010; McManus et 
 ## See Also
 
 - [[thi-temperature-humidity-index]]
+- [[precipitation-dairy-production]]
 - [[andrade-2023-thi-maps-southeast-brazil]]
+- [[boonkum-2024-heat-stress-thai-holstein]]
+- [[dias-souza-2026-dairy-climate-minas-gerais]]
 - [[embrapa]]

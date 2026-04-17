@@ -2,8 +2,8 @@
 title: "THI — Temperature and Humidity Index"
 type: concept
 created: 2026-04-15
-updated: 2026-04-15
-sources: ["ART+050_BJAER_JAN_2023.pdf"]
+updated: 2026-04-17
+sources: ["ART+050_BJAER_JAN_2023.pdf", "Impact of Heat Stress on Milk Yield.pdf", "Estimativa-espacializacao.pdf"]
 tags: [thermal-stress, dairy, methodology, climate-risk]
 ---
 
@@ -41,6 +41,21 @@ The critical threshold for dairy production decline is **THI ≥ 72** ([[andrade
 
 THI is a strong candidate index for the **climate risk dimension** of dairy zoning. It can be computed directly from INMET station data (temperature + humidity) and spatially interpolated to produce continuous risk surfaces. [[andrade-2023-thi-maps-southeast-brazil|Andrade et al. (2023)]] demonstrated this for southeastern Brazil using IDW⁴ interpolation.
 
+## Alternative Formula (NOAA)
+
+[[boonkum-2024-heat-stress-thai-holstein|Boonkum et al. (2024)]] use the NOAA formula, common in international genetic evaluation studies:
+
+```
+THI = (1.8 × Temp + 32) − (0.55 − 0.0055 × RH) × (1.8 × Temp − 26)
+```
+
+This formula produces **different absolute values** from the Buffington equation for the same conditions. The Thai–Holstein population showed a heat stress threshold of **THI = 76** (NOAA formula), corresponding to 25.6–26.9°C and RH 60–68.6%. The higher threshold reflects crossbreeding with heat-tolerant local breeds.
+
+## Spatial Mapping
+
+- [[andrade-2023-thi-maps-southeast-brazil|Andrade et al. (2023)]]: monthly THI maps for SE Brazil via [[idw-interpolation|IDW⁴]] from INMET stations
+- [[estimativa-espacializacao-thi-minas-gerais]]: monthly THI spatialization specifically for Minas Gerais, showing summer THI 71–79 across most of the state and winter comfort (THI 47–63) in southern highlands
+
 ## Limitations
 
 - THI captures temperature × humidity interaction but **does not account for solar radiation or wind speed**, which also affect heat load.
@@ -50,6 +65,9 @@ THI is a strong candidate index for the **climate risk dimension** of dairy zoni
 ## See Also
 
 - [[thermal-stress-dairy]]
+- [[precipitation-dairy-production]]
 - [[andrade-2023-thi-maps-southeast-brazil]]
+- [[boonkum-2024-heat-stress-thai-holstein]]
+- [[estimativa-espacializacao-thi-minas-gerais]]
 - [[inmet]]
 - [[idw-interpolation]]

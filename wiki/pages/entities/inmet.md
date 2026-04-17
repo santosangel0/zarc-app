@@ -2,8 +2,8 @@
 title: "INMET"
 type: entity
 created: 2026-04-15
-updated: 2026-04-15
-sources: ["ART+050_BJAER_JAN_2023.pdf"]
+updated: 2026-04-17
+sources: ["ART+050_BJAER_JAN_2023.pdf", "Dairy farming and climate parameters.pdf"]
 tags: [INMET, dataset, Brazil, climate-risk]
 ---
 
@@ -22,9 +22,15 @@ Brazil's national meteorological institute. Operates the country's network of au
 
 The zarc-app ingests INMET historical data via a parquet-based pipeline. Station data (`estacoes.parquet`) and historical records (`inmet_historico.parquet`) are stored in `data/`. See [[inmet-pipeline]] for technical details.
 
+## Additional Usage
+
+- [[dias-souza-2026-dairy-climate-minas-gerais|Dias-Souza et al. (2026)]]: INMET daily precipitation and temperature for high-productivity dairy cities in MG (2022).
+- [[estimativa-espacializacao-thi-minas-gerais]]: INMET station data for monthly THI spatialization across MG.
+
 ## See Also
 
 - [[embrapa]]
 - [[ibge-ppm]]
 - [[thi-temperature-humidity-index]]
 - [[andrade-2023-thi-maps-southeast-brazil]]
+- [[dias-souza-2026-dairy-climate-minas-gerais]]
