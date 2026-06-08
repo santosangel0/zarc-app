@@ -1,12 +1,12 @@
 # nolint start: commented_code_linter
 # zarc-app / app / logic / stats.R
-# Statistical helper functions for milk data.
+# Funções auxiliares de estatística para dados leiteiros.
 # nolint end
 
-#' Compute summary statistics for a numeric vector.
+#' Calcula estatísticas sumárias para um vetor numérico.
 #'
-#' @param x Numeric vector of values.
-#' @return A data.frame with one row and columns:
+#' @param x Vetor numérico de valores.
+#' @return data.frame com uma linha e colunas:
 #'   `media`, `mediana`, `desvio_padrao`,
 #'   `variancia`, `iqr`, `minimo`, `maximo`, `n`.
 #' @export
@@ -25,15 +25,15 @@ compute_summary <- function(x) {
   )
 }
 
-#' Perform Shapiro-Wilk normality test.
+#' Executa teste de normalidade de Shapiro-Wilk.
 #'
-#' Returns test results plus a pt-br interpretation.
-#' Handles edge cases (n < 3, n > 5000).
+#' Retorna resultados do teste mais interpretação em pt-br.
+#' Trata casos especiais (n < 3, n > 5000).
 #'
-#' @param x Numeric vector of values.
-#' @param alpha Significance level (default 0.05).
-#' @return A list with `statistic`, `p_value`,
-#'   `is_normal`, and `interpretation`.
+#' @param x Vetor numérico de valores.
+#' @param alpha Nível de significância (padrão 0.05).
+#' @return Lista com `statistic`, `p_value`,
+#'   `is_normal` e `interpretation`.
 #' @export
 test_normality <- function(x, alpha = 0.05) {
   x <- x[!is.na(x)]

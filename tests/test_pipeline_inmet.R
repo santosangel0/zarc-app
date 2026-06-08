@@ -1,6 +1,6 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # test_pipeline_inmet.R
-# Executa o pipeline INMET -> Parquet/DuckDB em fases diagnosticas.
+# Executa o pipeline INMET -> Parquet/DuckDB em fases diagnósticas.
 # Uso: Rscript tests/test_pipeline_inmet.R
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -8,7 +8,7 @@ cat("\n====================================================\n")
 cat("  INMET Pipeline -- Test Script\n")
 cat("====================================================\n\n")
 
-# -- FASE 0: Pacotes e configuracao ----------------------------------------
+# -- FASE 0: Pacotes e configuração ----------------------------------------
 cat("-- FASE 0: Carregando pacotes --\n")
 
 required_pkgs <- c(
@@ -54,7 +54,7 @@ cat("  BASE_DIR:", BASE_DIR, "\n")
 cat("  RAW_DIR:", RAW_DIR, "\n\n")
 
 
-# -- FASE 1: Metadados das estacoes (API -> Parquet) -----------------------
+# -- FASE 1: Metadados das estações (API -> Parquet) -----------------------
 cat("-- FASE 1: Fetch estacoes INMET --\n")
 
 resp <- request("https://apitempo.inmet.gov.br/estacoes/T") |>
@@ -118,7 +118,7 @@ for (zf in zip_files) {
 cat("\n")
 
 
-# -- FASE 3: Schema investigation (1 CSV por ZIP) -------------------------
+# -- FASE 3: Investigação de schema (1 CSV por ZIP) -------------------------
 cat("-- FASE 3: Investigacao de schema multi-ano --\n")
 
 diag_results <- list()
@@ -138,7 +138,7 @@ for (zip_path in zip_files) {
 
     sample_csv <- csv_entries[1]
 
-    # Leitura raw bytes -- mode = "rb" e crucial no Windows!
+    # Leitura raw bytes -- mode = "rb" é crucial no Windows!
     con_csv <- archive_read(zip_path, file = sample_csv, mode = "rb")
     raw_bytes <- readBin(con_csv, raw(), n = 4096)
     close(con_csv)
@@ -194,7 +194,7 @@ if (length(diag_results) > 0) {
 cat("\n")
 
 
-# -- FASE 4: Definir funcoes de parsing ------------------------------------
+# -- FASE 4: Definir funções de parsing ------------------------------------
 cat("-- FASE 4: Definindo funcoes de parsing --\n")
 
 normalize_colnames <- function(x) {
@@ -278,7 +278,7 @@ read_inmet_csv <- function(zip_path, csv_name) {
 cat("OK: normalize_colnames() e read_inmet_csv() definidas.\n\n")
 
 
-# -- FASE 4.5: Teste unitario -- parse de 1 CSV ----------------------------
+# -- FASE 4.5: Teste unitário -- parse de 1 CSV ----------------------------
 cat("-- FASE 4.5: Teste unitario -- parse de 1 CSV do primeiro ZIP --\n")
 
 test_zip <- zip_files[1]
@@ -309,7 +309,7 @@ if (length(test_csvs) > 0) {
 cat("\n")
 
 
-# -- FASE 5: Cross-reference com catalogo de estacoes ----------------------
+# -- FASE 5: Cross-reference com catálogo de estações ----------------------
 cat("-- FASE 5: Carregando catalogo de estacoes --\n")
 
 con <- dbConnect(duckdb())
@@ -320,7 +320,7 @@ cat("  Codigos no catalogo:", length(station_lookup), "\n\n")
 dbDisconnect(con, shutdown = TRUE)
 
 
-# -- FASE 6: Ingestao batch-by-year (TODOS os ZIPs) -----------------------
+# -- FASE 6: Ingestão batch-by-year (TODOS os ZIPs) -----------------------
 cat("-- FASE 6: Ingestao em lote (batch-by-year -> DuckDB) --\n")
 
 # Remove banco temporario de execucoes anteriores para comecar limpo
@@ -388,7 +388,7 @@ cat(sprintf(
 ))
 
 
-# -- FASE 6.1: Export final para Parquet -----------------------------------
+# -- FASE 6.1: Exportação final para Parquet ---------------------------------
 cat("-- FASE 6.1: Exportando tabela_clima -> Parquet (ZSTD) --\n")
 
 if (total_rows == 0) {
@@ -408,7 +408,7 @@ if (total_rows == 0) {
 }
 
 
-# -- FASE 6.2: Limpeza DuckDB temporario ----------------------------------
+# -- FASE 6.2: Limpeza DuckDB temporário ----------------------------------
 cat("-- FASE 6.2: Limpeza de arquivos temporarios --\n")
 temp_files <- list.files(BASE_DIR, pattern = "inmet_temp\\.duckdb", full.names = TRUE)
 if (length(temp_files) > 0) {
@@ -419,7 +419,7 @@ if (length(temp_files) > 0) {
 }
 
 
-# -- FASE 7: Validacao ----------------------------------------------------
+# -- FASE 7: Validação ----------------------------------------------------
 if (file.exists(PARQUET_HISTORICO)) {
   cat("-- FASE 7: Validacao do Parquet final --\n")
 

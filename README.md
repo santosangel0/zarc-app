@@ -1,124 +1,124 @@
 # 🐄 zarc-app
 
-**Geographic Intelligence for AgTech** — A production-ready R Shiny application built with the [Rhino](https://appsilon.github.io/rhino/) framework for exploring milk production data across Brazilian regions.
+**Inteligência Geográfica para o Agronegócio** — Aplicação R Shiny pronta para produção construída com o framework [Rhino](https://appsilon.github.io/rhino/) para explorar dados de produção leiteira em regiões brasileiras.
 
 ---
 
-## ✨ Features
+## ✨ Funcionalidades
 
-- **Interactive Map** — Leaflet choropleth visualization of milk production by municipality
-- **Cascading Geographic Filters** — Region → State → Mesoregion drill-down powered by the IBGE API
-- **SIDRA Integration** — Fetches official IBGE PPM (Pesquisa Pecuária Municipal) milk production data
-- **Shareable Sessions** — Export/import researcher filter configurations as JSON
-- **Dark Theme** — Professional AgTech-styled UI with bslib Darkly theme
-
----
-
-## 🏗️ Tech Stack
-
-| Layer          | Technology                        |
-|----------------|-----------------------------------|
-| Framework      | [Rhino](https://appsilon.github.io/rhino/) |
-| UI             | Shiny + bslib + Leaflet           |
-| Imports        | {box} module system               |
-| Dependencies   | {renv} lockfile                    |
-| HTTP Client    | {httr2}                           |
-| Spatial        | {sf}                              |
-| Styling        | Sass/SCSS                         |
-| CI/CD          | GitHub Actions                    |
-| Containerization | Docker (multi-stage)            |
+- **Mapa Interativo** — Visualização coroplética Leaflet da produção leiteira por município
+- **Filtros Geográficos em Cascata** — Perfuração Região → Estado → Mesorregião via API do IBGE
+- **Integração SIDRA** — Busca dados oficiais de produção leiteira da PPM (Pesquisa Pecuária Municipal) do IBGE
+- **Sessões Compartilháveis** — Exporta/importa configurações de filtro como JSON
+- **Tema Escuro** — UI profissional estilo AgTech com tema Darkly do bslib
 
 ---
 
-## 🚀 Quick Start
+## 🏗️ Stack Tecnológica
 
-### Prerequisites
+| Camada          | Tecnologia                        |
+|-----------------|-----------------------------------|
+| Framework       | [Rhino](https://appsilon.github.io/rhino/) |
+| UI              | Shiny + bslib + Leaflet           |
+| Importações     | Sistema de módulos {box}          |
+| Dependências    | {renv} lockfile                    |
+| HTTP Client     | {httr2}                           |
+| Espacial        | {sf}                              |
+| Estilização     | Sass/SCSS                         |
+| CI/CD           | GitHub Actions                    |
+| Containerização | Docker (multi-stage)            |
+
+---
+
+## 🚀 Início Rápido
+
+### Pré-requisitos
 
 - R ≥ 4.4.1
 - [renv](https://rstudio.github.io/renv/)
 
-### Local Development
+### Desenvolvimento Local
 
 ```bash
-# Clone the repository
+# Clone o repositório
 git clone https://github.com/santosangel0/zarc-app.git
 cd zarc-app
 
-# Restore R dependencies
+# Restaure as dependências R
 Rscript -e "renv::restore()"
 
-# Run the application
+# Execute a aplicação
 Rscript -e "shiny::runApp('.', port = 3838)"
 ```
 
-Open your browser at **http://localhost:3838**.
+Abra o navegador em **http://localhost:3838**.
 
 ### Docker
 
 ```bash
-# Build the image
+# Construa a imagem
 docker build -t zarc-app .
 
-# Run the container
+# Execute o contêiner
 docker run -p 3838:3838 zarc-app
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Estrutura do Projeto
 
 ```
 zarc-app/
 ├── app/
-│   ├── main.R                 # Application entry point
+│   ├── main.R                 # Ponto de entrada da aplicação
 │   ├── logic/
 │   │   ├── __init__.R
-│   │   ├── ibge.R             # IBGE API + SIDRA business logic
-│   │   └── state.R            # Session state management
+│   │   ├── ibge.R             # Lógica de negócio da API IBGE + SIDRA
+│   │   └── state.R            # Gerenciamento de estado de sessão
 │   ├── view/
 │   │   ├── __init__.R
-│   │   └── geo_sidebar.R      # Geographic filter sidebar module
+│   │   └── geo_sidebar.R      # Módulo de filtro geográfico na barra lateral
 │   ├── styles/
-│   │   └── main.scss          # Custom SCSS theme
+│   │   └── main.scss          # Tema SCSS personalizado
 │   ├── js/
-│   │   └── index.js           # JavaScript entry point
-│   └── static/                # Static assets
+│   │   └── index.js           # Ponto de entrada JavaScript
+│   └── static/                # Recursos estáticos
 ├── tests/
 │   └── testthat/
 │       ├── setup.R
 │       ├── test-ibge.R
 │       └── test-state.R
 ├── docs/
-│   └── architecture.md        # Architecture documentation
+│   └── architecture.md        # Documentação da arquitetura
 ├── .github/
 │   └── workflows/
-│       └── ci.yaml            # CI/CD pipeline
-├── Dockerfile                 # Multi-stage container build
-├── dependencies.R             # Package declarations
-├── rhino.yml                  # Rhino configuration
-├── renv.lock                  # Dependency lockfile
+│       └── ci.yaml            # Pipeline CI/CD
+├── Dockerfile                 # Build multi-estágio do container
+├── dependencies.R             # Declaração de pacotes
+├── rhino.yml                  # Configuração Rhino
+├── renv.lock                  # Lockfile de dependências
 └── README.md
 ```
 
-See [docs/architecture.md](docs/architecture.md) for a detailed explanation of the module separation pattern.
+Veja [docs/architecture.md](docs/architecture.md) para uma explicação detalhada do padrão de separação de módulos.
 
 ---
 
-## 🧪 Testing & Quality
+## 🧪 Testes & Qualidade
 
 ```bash
-# Run linter
+# Execute o linter
 Rscript -e "rhino::lint_r()"
 
-# Run unit tests
+# Execute os testes unitários
 Rscript -e "rhino::test_r()"
 ```
 
 ---
 
-## 📝 Conventional Commits
+## 📝 Commits Convencionais
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/). The initialization phase was structured as:
+Este projeto segue [Conventional Commits](https://www.conventionalcommits.org/). A fase de inicialização foi estruturada como:
 
 ```
 chore: initialize Rhino project scaffold with renv
@@ -134,6 +134,6 @@ test: add unit tests for IBGE logic and state management
 
 ---
 
-## 📄 License
+## 📄 Licença
 
-This project is part of the ZARC research initiative.
+Este projeto faz parte da iniciativa de pesquisa ZARC.

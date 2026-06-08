@@ -82,7 +82,7 @@ describe("export/import round-trip", {
     )
   })
 
-  it("errors on missing file", {
+  it("erro em arquivo inexistente", {
     expect_error(
       state$import_state(
         NULL, "/nonexistent/file.json"

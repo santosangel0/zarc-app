@@ -1,7 +1,7 @@
 # nolint start: commented_code_linter
 # zarc-app / app / logic / state.R
-# Reactive session state management with JSON
-# serialization / deserialization.
+# Gerenciamento de estado de sessão reativo com
+# serialização / desserialização JSON.
 # nolint end
 
 box::use(
@@ -9,12 +9,12 @@ box::use(
   jsonlite,
 )
 
-#' Create a new reactive session state.
+#' Cria um novo estado de sessão reativo.
 #'
-#' Initializes a reactiveValues object holding the
-#' researcher's current geographic and temporal selections.
+#' Inicializa um objeto reactiveValues com as
+#' seleções geográficas e temporais atuais.
 #'
-#' @return A reactiveValues object.
+#' @return Objeto reactiveValues.
 #' @export
 create_state <- function() {
   shiny$reactiveValues(
@@ -28,10 +28,10 @@ create_state <- function() {
   )
 }
 
-#' Export session state to JSON string.
+#' Exporta estado da sessão para string JSON.
 #'
-#' @param state A reactiveValues object.
-#' @return A JSON string (pretty-printed).
+#' @param state Objeto reactiveValues.
+#' @return String JSON (formatada).
 #' @export
 export_state <- function(state) {
   snapshot <- shiny$isolate(
@@ -48,11 +48,11 @@ export_state <- function(state) {
   )
 }
 
-#' Save session state to a JSON file.
+#' Salva estado da sessão em arquivo JSON.
 #'
-#' @param state A reactiveValues object.
-#' @param path Character file path for JSON output.
-#' @return The file path (invisibly).
+#' @param state Objeto reactiveValues.
+#' @param path Caminho do arquivo JSON de saída.
+#' @return O caminho do arquivo (invisivelmente).
 #' @export
 save_state <- function(state, path) {
   json <- export_state(state)
@@ -60,15 +60,15 @@ save_state <- function(state, path) {
   invisible(path)
 }
 
-#' Import session state from a JSON file.
+#' Importa estado da sessão de arquivo JSON.
 #'
-#' @param state A reactiveValues object.
-#' @param path Character file path to JSON state file.
-#' @return The updated state object (invisibly).
+#' @param state Objeto reactiveValues.
+#' @param path Caminho do arquivo JSON de estado.
+#' @return O objeto de estado atualizado (invisivelmente).
 #' @export
 import_state <- function(state, path) {
   if (!file.exists(path)) {
-    stop("State file not found: ", path)
+    stop("Arquivo de estado não encontrado: ", path)
   }
   snapshot <- jsonlite$fromJSON(
     readLines(path, warn = FALSE)
@@ -91,17 +91,17 @@ import_state <- function(state, path) {
   invisible(state)
 }
 
-#' Load session state from a JSON file.
+#' Carrega estado da sessão de arquivo JSON.
 #'
-#' Returns a list of settings without modifying
-#' any reactive values. Used for UI restoration.
+#' Retorna uma lista de configurações sem modificar
+#' valores reativos. Usado para restauração de UI.
 #'
-#' @param path Character file path to JSON file.
-#' @return A list of imported settings.
+#' @param path Caminho do arquivo JSON.
+#' @return Lista de configurações importadas.
 #' @export
 load_state <- function(path) {
   if (!file.exists(path)) {
-    stop("State file not found: ", path)
+    stop("Arquivo de estado não encontrado: ", path)
   }
   jsonlite$fromJSON(
     readLines(path, warn = FALSE)

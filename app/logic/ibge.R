@@ -1,7 +1,7 @@
 # nolint start: commented_code_linter
 # zarc-app / app / logic / ibge.R
-# Pure business logic for IBGE geographic data and SIDRA milk production API.
-# No Shiny reactivity in this file.
+# Lógica de negócio pura para dados geográficos do IBGE e API SIDRA de produção leiteira.
+# Sem reatividade Shiny neste arquivo.
 # nolint end
 
 box::use(
@@ -10,9 +10,9 @@ box::use(
   sf,
 )
 
-#' Brazilian macro-regions lookup table.
+#' Tabela de consulta de grandes regiões brasileiras.
 #'
-#' @return A named list mapping region names to IBGE codes.
+#' @return Lista nomeada mapeando nomes de regiões para códigos IBGE.
 #' @export
 get_regions <- function() {
   list(
@@ -24,10 +24,10 @@ get_regions <- function() {
   )
 }
 
-#' Fetch states for a given macro-region.
+#' Busca estados de uma grande região.
 #'
-#' @param region_code Integer IBGE macro-region code (1-5).
-#' @return A data.frame with columns `id` and `nome`.
+#' @param region_code Código inteiro da grande região IBGE (1-5).
+#' @return data.frame com colunas `id` e `nome`.
 #' @export
 get_states <- function(region_code) {
   url <- paste0(
@@ -54,10 +54,10 @@ get_states <- function(region_code) {
   )
 }
 
-#' Fetch mesoregions for a given state.
+#' Busca mesorregiões de um estado.
 #'
-#' @param state_code Integer IBGE state code (e.g. 52).
-#' @return A data.frame with columns `id` and `nome`.
+#' @param state_code Código inteiro do estado IBGE (ex: 52).
+#' @return data.frame com colunas `id` e `nome`.
 #' @export
 get_mesoregions <- function(state_code) {
   url <- paste0(
@@ -84,9 +84,9 @@ get_mesoregions <- function(state_code) {
   )
 }
 
-#' Fetch all Brazilian states.
+#' Busca todos os estados brasileiros.
 #'
-#' @return A data.frame with `id` and `nome`.
+#' @return data.frame com `id` e `nome`.
 #' @export
 get_all_states <- function() {
   url <- paste0(
@@ -113,10 +113,10 @@ get_all_states <- function() {
   )
 }
 
-#' Fetch municipalities for a given state.
+#' Busca municípios de um estado.
 #'
-#' @param state_code Integer IBGE state code.
-#' @return A data.frame with `id` and `nome`.
+#' @param state_code Código inteiro do estado IBGE.
+#' @return data.frame com `id` e `nome`.
 #' @export
 get_municipalities <- function(state_code) {
   url <- paste0(
@@ -144,12 +144,12 @@ get_municipalities <- function(state_code) {
   )
 }
 
-#' Fetch GeoJSON polygons from IBGE Malhas API.
+#' Busca polígonos GeoJSON da API Malhas do IBGE.
 #'
 #' @param level Character: `"regioes"`, `"estados"`,
-#'   `"mesorregioes"`, or `"municipios"`.
-#' @param code Integer or character IBGE code.
-#' @return An `sf` object with polygon geometries.
+#'   `"mesorregioes"` ou `"municipios"`.
+#' @param code Código IBGE (inteiro ou character).
+#' @return Objeto `sf` com geometrias de polígonos.
 #' @export
 fetch_geojson <- function(level, code) {
   valid <- c(
@@ -196,13 +196,13 @@ fetch_geojson <- function(level, code) {
   sf$st_read(tmp, quiet = TRUE)
 }
 
-#' Fetch GeoJSON subdivisions from IBGE Malhas API.
+#' Busca subdivisões GeoJSON da API Malhas do IBGE.
 #'
-#' Returns child geographic divisions of a given entity.
+#' Retorna divisões geográficas filhas de uma entidade.
 #'
-#' @param code Integer IBGE code for parent entity.
-#' @param subdivision_level Character: child level.
-#' @return An `sf` object with polygon geometries.
+#' @param code Código inteiro IBGE da entidade pai.
+#' @param subdivision_level Character: nível filho.
+#' @return Objeto `sf` com geometrias de polígonos.
 #' @export
 fetch_subdivisions <- function(
   code,
@@ -281,20 +281,20 @@ fetch_subdivisions <- function(
   sf$st_read(tmp, quiet = TRUE)
 }
 
-#' Fetch milk production from IBGE Agregados API.
+#' Busca produção leiteira da API Agregados do IBGE.
 #'
-#' Uses Table 74 (PPM) with Variable 106 and
-#' Classification 80/2682 (Leite) from the IBGE
-#' Agregados API v3. Supports multiple years.
+#' Usa a Tabela 74 (PPM) com Variável 106 e
+#' Classificação 80/2682 (Leite) da API
+#' Agregados v3 do IBGE. Suporta múltiplos anos.
 #'
-#' @param geo_level Character geographic level code:
-#'   `"N2"` (grande regiao), `"N3"` (estado),
-#'   `"N6"` (municipio), `"N8"` (mesorregiao),
-#'   `"N9"` (microrregiao).
-#' @param codes Integer vector of IBGE codes.
-#' @param years Integer vector of years.
-#' @return A data.frame with columns `code`, `nome`,
-#'   `year`, and `milk_production_liters`.
+#' @param geo_level Código do nível geográfico:
+#'   `"N2"` (grande região), `"N3"` (estado),
+#'   `"N6"` (município), `"N8"` (mesorregião),
+#'   `"N9"` (microrregião).
+#' @param codes Vetor de inteiros com códigos IBGE.
+#' @param years Vetor de inteiros com anos.
+#' @return data.frame com colunas `code`, `nome`,
+#'   `year` e `milk_production_liters`.
 #' @export
 fetch_milk_production <- function(
   geo_level, codes, years
@@ -383,16 +383,16 @@ fetch_milk_production <- function(
   ]
 }
 
-#' Validate IBGE API request against 100k limit.
+#' Valida requisição à API IBGE contra limite de 100k.
 #'
-#' The Agregados API allows at most 100,000 values
-#' per request: categories x periods x locations.
+#' A API Agregados permite no máximo 100.000 valores
+#' por requisição: categorias x períodos x localidades.
 #'
-#' @param n_categories Integer number of categories.
-#' @param n_periods Integer number of periods.
-#' @param n_locations Integer number of locations.
-#' @return `TRUE` if valid, or a character string
-#'   with the error message.
+#' @param n_categories Número inteiro de categorias.
+#' @param n_periods Número inteiro de períodos.
+#' @param n_locations Número inteiro de localidades.
+#' @return `TRUE` se válido, ou string de caractere
+#'   com a mensagem de erro.
 #' @export
 validate_api_request <- function(
   n_categories = 1L,
@@ -418,13 +418,13 @@ validate_api_request <- function(
   )
 }
 
-#' Clean IBGE/SIDRA special value strings.
+#' Limpa strings de valores especiais do IBGE/SIDRA.
 #'
-#' Converts IBGE conventions:
+#' Converte convenções do IBGE:
 #' `"-"` -> 0, `".."` / `"..."` / `"X"` -> NA.
 #'
-#' @param x Character vector of raw values.
-#' @return Numeric vector.
+#' @param x Vetor de caracteres com valores brutos.
+#' @return Vetor numérico.
 #' @export
 clean_sidra_values <- function(x) {
   x[x == "-"] <- "0"
@@ -432,10 +432,10 @@ clean_sidra_values <- function(x) {
   suppressWarnings(as.numeric(x))
 }
 
-#' Fetch microregions for a given state.
+#' Busca microrregiões de um estado.
 #'
-#' @param state_code Integer IBGE state code.
-#' @return A data.frame with `id` and `nome`.
+#' @param state_code Código inteiro do estado IBGE.
+#' @return data.frame com `id` e `nome`.
 #' @export
 get_microregions <- function(state_code) {
   url <- paste0(

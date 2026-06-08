@@ -1,3 +1,3 @@
-# Rhino entry point.
-# This file is required by shiny::runApp() and delegates to rhino::app().
+# Ponto de entrada Rhino.
+# Este arquivo é necessário para shiny::runApp() e delega para rhino::app().
 rhino::app()

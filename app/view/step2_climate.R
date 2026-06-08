@@ -1,8 +1,8 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / step2_climate.R
-# Wizard Step 2: Climate Data (INMET).
-# Spatial station filtering, buffer, map
-# visualization, and climate data fetching.
+# Passo 2 do Wizard: Dados Climáticos (INMET).
+# Filtragem espacial de estações, buffer, mapa
+# e busca de dados climáticos.
 # nolint end
 
 box::use(
@@ -15,9 +15,9 @@ box::use(
   app / view / climate_data_view,
 )
 
-#' Step 2 Climate UI
-#' @param id Character namespace ID.
-#' @return A Shiny tag list.
+#' UI do Passo 2 — Clima
+#' @param id Identificador de namespace (character).
+#' @return Lista de tags Shiny.
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -151,10 +151,10 @@ ui <- function(id) {
   )
 }
 
-#' Step 2 Climate Server
-#' @param id Character namespace ID.
-#' @param app_state A `reactiveValues` object
-#'   shared with the main server.
+#' Server do Passo 2 — Clima
+#' @param id Identificador de namespace (character).
+#' @param app_state Objeto `reactiveValues`
+#'   compartilhado com o server principal.
 #' @export
 server <- function(id, app_state) {
   shiny$moduleServer(id, function(
@@ -164,7 +164,7 @@ server <- function(id, app_state) {
 
     climate_data_view$server("climate_data", app_state)
 
-    # ── Expose region status for cond. panel ──
+    # ── Expõe status da região p/ painel condicional ──
     output$has_region <- shiny$reactive({
       !is.null(app_state$locked_region)
     })
@@ -173,7 +173,7 @@ server <- function(id, app_state) {
       suspendWhenHidden = FALSE
     )
 
-    # ── Original ROI (normalized to WGS84) ──
+    # ── ROI original (normalizado para WGS84) ──
     original_roi <- shiny$reactive({
       locked <- app_state$locked_region
       shiny$req(locked)
@@ -182,7 +182,7 @@ server <- function(id, app_state) {
       inmet$buffer_polygon(geo, 0)
     })
 
-    # ── Buffered ROI polygon ──
+    # ── ROI com buffer ──
     buffered_roi <- shiny$reactive({
       roi <- original_roi()
       shiny$req(roi)
@@ -193,7 +193,7 @@ server <- function(id, app_state) {
       inmet$buffer_polygon(roi, buf)
     })
 
-    # ── Filtered stations ──
+    # ── Estações filtradas ──
     all_stations <- shiny$reactiveVal(NULL)
 
     filtered <- shiny$reactive({
@@ -243,13 +243,13 @@ server <- function(id, app_state) {
           )
       })
 
-    # Track if map is fully rendered to prevent proxy updates on hidden/0x0 map
+    # Monitora se o mapa foi renderizado p/ evitar atualizações em mapa oculto/0x0
     map_ready <- shiny$reactiveVal(FALSE)
     shiny$observeEvent(input$climate_map_bounds, {
       map_ready(TRUE)
     })
 
-    # Update map when buffer/stations change
+    # Atualiza mapa quando buffer/estações mudam
     shiny$observe({
       shiny$req(map_ready())
       roi <- original_roi()
@@ -267,7 +267,7 @@ server <- function(id, app_state) {
         leaflet$clearShapes() |>
         leaflet$clearMarkers()
 
-      # Draw buffer ring (if buffer > 0)
+      # Desenha anel do buffer (se buffer > 0)
       if (buf_km > 0L && !is.null(buf_roi)) {
         ring <- suppressWarnings(
           sf$st_difference(
@@ -296,7 +296,7 @@ server <- function(id, app_state) {
         }
       }
 
-      # Draw original ROI
+      # Desenha ROI original
       proxy |>
         leaflet$addPolygons(
           data = roi,
@@ -308,7 +308,7 @@ server <- function(id, app_state) {
           group = "roi"
         )
 
-      # Draw station markers
+      # Desenha marcadores das estações
       if (
         !is.null(stations) &&
           nrow(stations) > 0L
@@ -337,7 +337,7 @@ server <- function(id, app_state) {
           )
       }
 
-      # Fit bounds to visible area
+      # Ajusta zoom para área visível
       fit_roi <- if (
         buf_km > 0L && !is.null(buf_roi)
       ) {
@@ -354,7 +354,7 @@ server <- function(id, app_state) {
       )
     })
 
-    # ── Stations table ──
+    # ── Tabela de estações ──
     output$stations_table <- DT$renderDT({
       st <- filtered()
       shiny$req(st)
@@ -396,7 +396,7 @@ server <- function(id, app_state) {
       )
     })
 
-    # ── Fetch climate data on button ──
+    # ── Busca dados climáticos ao clicar no botão ──
     shiny$observeEvent(
       input$fetch_climate,
       {

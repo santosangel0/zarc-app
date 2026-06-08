@@ -1,6 +1,6 @@
 # nolint start: commented_code_linter
 # tests / testthat / test-stats.R
-# Unit tests for app/logic/stats.R
+# Testes unitários para app/logic/stats.R
 # nolint end
 
 box::use(

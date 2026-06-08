@@ -1,8 +1,8 @@
 # nolint start: commented_code_linter
 # zarc-app / app / main.R
-# Root Shiny module for zarc-app.
-# Wizard orchestrator: manages navigation between
-# Step 1 (Scope) and Step 2 (Climate).
+# Módulo raiz do Shiny para o zarc-app.
+# Orquestrador do Wizard: gerencia a navegação entre
+# Passo 1 (Escopo) e Passo 2 (Clima).
 # nolint end
 
 box::use(
@@ -12,7 +12,7 @@ box::use(
   app / view / step2_climate,
 )
 
-#' Main UI
+#' UI Principal
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -59,7 +59,7 @@ ui <- function(id) {
   )
 }
 
-#' Main Server
+#' Server Principal
 #' @export
 server <- function(id) {
   shiny$moduleServer(id, function(
@@ -67,9 +67,9 @@ server <- function(id) {
   ) {
     ns <- session$ns
 
-    # ── Global reactive state ──
+    # ── Estado reativo global ──
     app_state <- shiny$reactiveValues(
-      # Current selections (Step 1)
+      # Seleções atuais (Passo 1)
       geo_level = NULL,
       target_codes = NULL,
       years = NULL,
@@ -79,19 +79,19 @@ server <- function(id) {
       raw_milk_data = NULL,
       geo_data = NULL,
       apply_trigger = NULL,
-      # Locked state (Wizard)
+      # Estado travado (Wizard)
       locked_region = NULL,
       locked_years = NULL,
       step = 1L,
-      # Climate data (Step 2)
+      # Dados climáticos (Passo 2)
       climate_data = NULL
     )
 
-    # ── Wire step modules ──
+    # ── Conecta módulos dos passos ──
     step1_scope$server("step1", app_state)
     step2_climate$server("step2", app_state)
 
-    # ── Auto-advance on lock ──
+    # ── Avanço automático ao travar ──
     shiny$observeEvent(
       app_state$locked_region,
       {
@@ -107,7 +107,7 @@ server <- function(id) {
       ignoreNULL = FALSE
     )
 
-    # ── Return to Step 1 on unlock ──
+    # ── Retorno ao Passo 1 ao destravar ──
     shiny$observeEvent(
       app_state$step,
       {

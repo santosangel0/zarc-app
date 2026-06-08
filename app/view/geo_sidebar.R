@@ -1,6 +1,6 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / geo_sidebar.R
-# Shiny module: 4-level cascading geographic filter.
+# Módulo Shiny: filtro geográfico em cascata de 4 níveis.
 # nolint end
 
 box::use(
@@ -9,9 +9,9 @@ box::use(
   app / logic / state,
 )
 
-#' Geographic Sidebar UI
-#' @param id Character namespace ID.
-#' @return A Shiny tag list.
+#' UI da Barra Lateral Geográfica
+#' @param id Identificador de namespace (character).
+#' @return Lista de tags Shiny.
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -160,7 +160,7 @@ server <- function(id, app_state) {
         character(0)
       )
 
-      # ── Cascade 1: Base Scope -> Specific
+      # ── Cascata 1: Escopo Base -> Específico
       shiny$observeEvent(
         input$base_scope,
         {
@@ -224,7 +224,7 @@ server <- function(id, app_state) {
         ignoreInit = FALSE
       )
 
-      # ── Cascade 2: Specific -> Granularity
+      # ── Cascata 2: Específico -> Granularidade
       shiny$observeEvent(
         input$specific_scope,
         {
@@ -283,7 +283,7 @@ server <- function(id, app_state) {
         ignoreInit = TRUE
       )
 
-      # ── Cascade 3: Granularity -> Locations
+      # ── Cascata 3: Granularidade -> Localidades
       shiny$observeEvent(
         input$target_granularity,
         {
@@ -327,7 +327,7 @@ server <- function(id, app_state) {
             ch <- character(0)
           }
 
-          # Store for select-all
+          # Armazena p/ selecionar todos
           available_choices(ch)
 
           shiny$updateSelectizeInput(
@@ -341,7 +341,7 @@ server <- function(id, app_state) {
         ignoreInit = TRUE
       )
 
-      # ── Select All / Clear All
+      # ── Selecionar Tudo / Limpar Tudo
       shiny$observeEvent(input$select_all, {
         ch <- available_choices()
         if (length(ch) > 0L) {
@@ -366,7 +366,7 @@ server <- function(id, app_state) {
         )
       })
 
-      # ── Apply -> update app_state
+      # ── Aplicar -> atualiza app_state
       shiny$observeEvent(input$apply, {
         yr <- input$year_range
         locs <- input$target_locations
@@ -410,7 +410,7 @@ server <- function(id, app_state) {
         )
       })
 
-      # ── Import settings
+      # ── Importar configurações
       shiny$observeEvent(
         input$import_state,
         {
@@ -488,7 +488,7 @@ server <- function(id, app_state) {
         }
       )
 
-      # ── Export session
+      # ── Exportar sessão
       output$export_state <-
         shiny$downloadHandler(
           filename = function() {
@@ -508,7 +508,7 @@ server <- function(id, app_state) {
           }
         )
 
-      # ── Download raw data
+      # ── Baixar dados brutos
       output$download_raw <-
         shiny$downloadHandler(
           filename = function() {
@@ -529,7 +529,7 @@ server <- function(id, app_state) {
           }
         )
 
-      # ── Download processed data
+      # ── Baixar dados processados
       output$download_processed <-
         shiny$downloadHandler(
           filename = function() {
@@ -605,10 +605,10 @@ get_locations <- function(
   )
 }
 
-#' Restore UI state from imported settings.
+#' Restaura estado da UI a partir de configurações importadas.
 #'
-#' @param session Shiny session object.
-#' @param imported List from imported JSON.
+#' @param session Objeto de sessão Shiny.
+#' @param imported Lista do JSON importado.
 #' @keywords internal
 restore_ui <- function(session, imported) {
   has_years <- (

@@ -1,6 +1,6 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / charts.R
-# Shiny module: animated bar chart and line chart.
+# Módulo Shiny: gráfico de barras animado e gráfico de linhas.
 # nolint end
 
 box::use(

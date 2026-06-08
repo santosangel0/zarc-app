@@ -1,12 +1,12 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # zarc-app Dockerfile
-# Multi-stage build optimized for Shiny / Rhino applications.
+# Build multi-estágio otimizado para aplicações Shiny / Rhino.
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ── Stage 1: Builder ─────────────────────────────────────────────────────────
+# ── Estágio 1: Builder ───────────────────────────────────────────────────────
 FROM rocker/r-ver:4.5.2 AS builder
 
-# System dependencies for spatial packages (sf, terra)
+# Dependências do sistema para pacotes espaciais (sf, terra)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdal-dev \
     libgeos-dev \
@@ -22,19 +22,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Restore renv library first (cache-friendly layer)
+# Restaura biblioteca renv primeiro (camada cache-friendly)
 COPY renv.lock renv.lock
 COPY dependencies.R dependencies.R
 COPY .Rprofile .Rprofile
 COPY renv/ renv/
 
-# Disable renv cache so packages are installed directly into renv/library/
-# instead of as symlinks (which break across multi-stage COPY).
+# Desabilita cache do renv para instalar pacotes diretamente em renv/library/
+# em vez de symlinks (quebram em COPY multi-estágio).
 ENV RENV_CONFIG_CACHE_ENABLED=FALSE
 
 RUN Rscript -e "renv::restore(prompt = FALSE)"
 
-# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+# ── Estágio 2: Runtime ───────────────────────────────────────────────────────
 FROM rocker/r-ver:4.5.2 AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -52,12 +52,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy restored renv library from builder
+# Copia biblioteca renv restaurada do builder
 COPY --from=builder /build/renv/ renv/
 COPY --from=builder /build/renv.lock renv.lock
 COPY --from=builder /build/.Rprofile .Rprofile
 
-# Copy application code
+# Copia código da aplicação
 COPY app.R app.R
 COPY config.yml config.yml
 COPY dependencies.R dependencies.R

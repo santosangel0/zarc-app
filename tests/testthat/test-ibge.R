@@ -11,7 +11,7 @@ box::use(
   app / logic / ibge,
 )
 
-# ── Mock Data ────────────────────────────────────
+# ── Dados Mock ──────────────────────────────────
 
 mock_states_json <- paste0(
   "[",
@@ -74,7 +74,7 @@ mock_milk_empty_json <- paste0(
   "]"
 )
 
-# ── Enable mocking ───────────────────────────────
+# ── Ativa mocking ───────────────────────────────
 
 enable(quiet = TRUE)
 
@@ -84,7 +84,7 @@ base_url <- paste0(
   "https://servicodados.ibge.gov.br"
 )
 
-# Stub: get_states for region 5
+# Stub: get_states para região 5
 stub_request(
   "get",
   paste0(
@@ -118,7 +118,7 @@ stub_request(
     )
   )
 
-# Stub: get_mesoregions for state 52
+# Stub: get_mesoregions para estado 52
 stub_request(
   "get",
   paste0(
@@ -135,7 +135,7 @@ stub_request(
     )
   )
 
-# Stub: get_microregions for state 52
+# Stub: get_microregions para estado 52
 stub_request(
   "get",
   paste0(
@@ -152,7 +152,7 @@ stub_request(
     )
   )
 
-# Stub: get_municipalities for state 52
+# Stub: get_municipalities para estado 52
 stub_request(
   "get",
   paste0(
@@ -188,7 +188,7 @@ stub_request(
     )
   )
 
-# Stub: fetch_milk_production N3 99 (bad)
+# Stub: fetch_milk_production N3 99 (ruim)
 stub_request(
   "get",
   paste0(
@@ -207,7 +207,7 @@ stub_request(
     )
   )
 
-# ── Tests ────────────────────────────────────────
+# ── Testes ───────────────────────────────────────
 
 describe("get_regions()", {
   it("returns 5 macro-regions", {

@@ -1,1 +1,1 @@
-// zarc-app: JavaScript entry point
+// zarc-app: ponto de entrada JavaScript

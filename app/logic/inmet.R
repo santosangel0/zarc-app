@@ -1,9 +1,9 @@
 # nolint start: commented_code_linter
 # zarc-app / app / logic / inmet.R
-# Pure business logic for INMET meteorological
-# station data: fetching, spatial filtering,
-# quality control, and ITU calculation.
-# No Shiny reactivity in this file.
+# Lógica de negócio pura para dados meteorológicos
+# do INMET: busca, filtragem espacial, controle de
+# qualidade e cálculo de ITU.
+# Sem reatividade Shiny neste arquivo.
 # nolint end
 
 box::use(
@@ -19,15 +19,15 @@ inmet_ua <- paste0(
   "Chrome/120.0.0.0 Safari/537.36"
 )
 
-#' Fetch all automatic INMET stations.
+#' Busca todas as estações automáticas do INMET.
 #'
-#' Retrieves the full list of automatic weather
-#' stations from the INMET API, cleans coordinates,
-#' and returns an `sf` object in WGS84.
+#' Recupera a lista completa de estações
+#' meteorológicas automáticas da API do INMET, limpa
+#' coordenadas e retorna objeto `sf` em WGS84.
 #'
-#' @return An `sf` object with columns
+#' @return Objeto `sf` com colunas
 #'   `CD_ESTACAO`, `DC_NOME`, `VL_LATITUDE`,
-#'   `VL_LONGITUDE`, and point geometry.
+#'   `VL_LONGITUDE` e geometria de pontos.
 #' @export
 get_stations <- function() {
   url <- paste0(
@@ -96,14 +96,14 @@ get_stations <- function() {
   stations_sf
 }
 
-#' Filter stations by Region of Interest.
+#' Filtra estações por Região de Interesse.
 #'
-#' Performs a spatial intersection to keep only
-#' stations that fall within the ROI polygon.
+#' Realiza interseção espacial para manter apenas
+#' estações dentro do polígono da ROI.
 #'
-#' @param stations_sf An `sf` object of stations.
-#' @param roi_sf An `sf` polygon for the region.
-#' @return An `sf` object with filtered stations.
+#' @param stations_sf Objeto `sf` de estações.
+#' @param roi_sf Polígono `sf` da região.
+#' @return Objeto `sf` com estações filtradas.
 #' @export
 filter_stations <- function(
   stations_sf, roi_sf
@@ -143,16 +143,16 @@ filter_stations <- function(
   sf$st_transform(joined, 4326L)
 }
 
-#' Fetch daily climate data for a station.
+#' Busca dados climáticos diários de uma estação.
 #'
-#' Retrieves daily observations from the INMET
-#' authenticated API, applies Quality Control
-#' filters, and calculates ITU (Buffington 1977).
+#' Recupera observações diárias da API autenticada
+#' do INMET, aplica filtros de Controle de Qualidade
+#' e calcula ITU (Buffington 1977).
 #'
-#' @param station_code Character station code.
-#' @param start_date Character or Date start.
-#' @param end_date Character or Date end.
-#' @return A data.frame with columns: `date`,
+#' @param station_code Código da estação (character).
+#' @param start_date Data inicial (Date ou character).
+#' @param end_date Data final (Date ou character).
+#' @return data.frame com colunas: `date`,
 #'   `station_code`, `TEMP_MED`, `TEMP_MAX`,
 #'   `UMID_MED`, `UMID_MIN`, `ITU_MED`,
 #'   `ITU_MAX`.
@@ -286,18 +286,18 @@ fetch_climate_data <- function(
   df
 }
 
-#' Apply a spatial buffer to a polygon.
+#' Aplica buffer espacial a um polígono.
 #'
-#' Transforms to a projected CRS (EPSG:5880,
-#' SIRGAS 2000 / Brazil Polyconic) for metric
-#' buffering, then transforms back to WGS84.
+#' Transforma para um SRC projetado (EPSG:5880,
+#' SIRGAS 2000 / Brazil Polyconic) para buffer
+#' métrico, depois retorna para WGS84.
 #'
-#' @param roi_sf An `sf` polygon object.
-#' @param buffer_km Numeric buffer in kilometers.
-#' @return An `sf` polygon (buffered) in WGS84.
+#' @param roi_sf Objeto polígono `sf`.
+#' @param buffer_km Buffer numérico em quilômetros.
+#' @return Polígono `sf` (com buffer) em WGS84.
 #' @export
 buffer_polygon <- function(roi_sf, buffer_km) {
-  # Normalize to WGS84 first
+  # Normaliza para WGS84 primeiro
   roi_sf <- sf$st_transform(roi_sf, 4326L)
 
   if (buffer_km <= 0) {

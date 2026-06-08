@@ -1,7 +1,7 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / analysis.R
-# Shiny module: histogram, descriptive statistics,
-# and normality test.
+# Módulo Shiny: histograma, estatísticas descritivas
+# e teste de normalidade.
 # nolint end
 
 box::use(
@@ -10,10 +10,10 @@ box::use(
   app / logic / stats,
 )
 
-#' Analysis Module UI
+#' UI do Módulo de Análise
 #'
-#' @param id Character namespace ID.
-#' @return A Shiny tag list.
+#' @param id Identificador de namespace (character).
+#' @return Lista de tags Shiny.
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -57,10 +57,10 @@ ui <- function(id) {
   )
 }
 
-#' Analysis Module Server
+#' Server do Módulo de Análise
 #'
-#' @param id Character namespace ID.
-#' @param app_state A `reactiveValues` object.
+#' @param id Identificador de namespace (character).
+#' @param app_state Objeto `reactiveValues`.
 #' @export
 server <- function(id, app_state) {
   shiny$moduleServer(

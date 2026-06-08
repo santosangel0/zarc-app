@@ -1,5 +1,5 @@
-# This file allows packrat (used by rsconnect during deployment) to pick up dependencies.
-# It is also used by renv to discover project dependencies.
+# Este arquivo permite que o packrat (usado pelo rsconnect durante deploy) identifique dependências.
+# Também é usado pelo renv para descobrir dependências do projeto.
 
 # ── Framework ────────────────────────────────────────────────────────────────
 library(rhino)
@@ -11,16 +11,16 @@ library(shiny)
 library(bslib)
 library(leaflet)
 
-# ── Data & HTTP ──────────────────────────────────────────────────────────────
+# ── Dados & HTTP ─────────────────────────────────────────────────────────────
 library(httr2)
 library(jsonlite)
 library(sf)
 library(dplyr)
 
-# ── Charts ───────────────────────────────────────────────────────────────────
+# ── Gráficos ─────────────────────────────────────────────────────────────────
 library(plotly)
 library(ggplot2)
 library(DT)
 
-# ── Testing ───────────────────────────────────────────────────────────────────
+# ── Testes ────────────────────────────────────────────────────────────────────
 library(webmockr)

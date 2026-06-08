@@ -1,7 +1,8 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / data_view.R
-# Shiny module: Data table inspection with
-# raw/processed toggle, row sampler, and footer.
+# Módulo Shiny: Inspeção de tabela de dados com
+# alternância bruto/processado, amostrador de linhas
+# e rodapé.
 # nolint end
 
 box::use(

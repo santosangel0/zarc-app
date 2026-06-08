@@ -12,7 +12,7 @@ box::use(
   app / logic / inmet,
 )
 
-# ── Mock Data ────────────────────────────────────
+# ── Dados Mock ──────────────────────────────────
 
 mock_stations_json <- paste0(
   "[",
@@ -60,7 +60,7 @@ mock_climate_json <- paste0(
 
 mock_climate_empty_json <- "[]"
 
-# ── Enable mocking ──────────────────────────────
+# ── Ativa mocking ───────────────────────────────
 
 enable(quiet = TRUE)
 withr::defer(disable(quiet = TRUE))
@@ -69,7 +69,7 @@ inmet_base <- (
   "https://apitempo.inmet.gov.br"
 )
 
-# Stub: stations list
+# Stub: lista de estações
 stub_request(
   "get",
   paste0(inmet_base, "/estacoes/T")
@@ -82,7 +82,7 @@ stub_request(
     )
   )
 
-# Stub: daily climate data (normal)
+# Stub: dados climáticos diários (normal)
 stub_request(
   "get",
   paste0(
@@ -100,7 +100,7 @@ stub_request(
     )
   )
 
-# Stub: daily climate data (empty)
+# Stub: dados climáticos diários (vazio)
 stub_request(
   "get",
   paste0(
@@ -118,7 +118,7 @@ stub_request(
     )
   )
 
-# ── Tests ────────────────────────────────────────
+# ── Testes ───────────────────────────────────────
 
 describe("Token security", {
   it("config retrieves inmet_token from env", {
@@ -183,7 +183,7 @@ describe("get_stations()", {
 
   it("drops rows with missing coords", {
     stations <- inmet$get_stations()
-    # Mock has 3 stations, 1 with null coords
+    # Mock tem 3 estações, 1 com coordenadas nulas
     expect_equal(nrow(stations), 2L)
   })
 

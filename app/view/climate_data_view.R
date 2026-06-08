@@ -1,7 +1,8 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / climate_data_view.R
-# Shiny module: Data table inspection for INMET
-# climate data with row sampler and footer.
+# Módulo Shiny: Inspeção de tabela de dados
+# climáticos do INMET com amostrador de linhas
+# e rodapé.
 # nolint end
 
 box::use(
@@ -9,9 +10,9 @@ box::use(
   DT,
 )
 
-#' Climate Data View Module UI
-#' @param id Character namespace ID.
-#' @return A Shiny tag list.
+#' UI do Módulo de Visualização de Dados Climáticos
+#' @param id Identificador de namespace (character).
+#' @return Lista de tags Shiny.
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -60,9 +61,9 @@ ui <- function(id) {
   )
 }
 
-#' Climate Data View Module Server
-#' @param id Character namespace ID.
-#' @param app_state A `reactiveValues` object.
+#' Server do Módulo de Visualização de Dados Climáticos
+#' @param id Identificador de namespace (character).
+#' @param app_state Objeto `reactiveValues`.
 #' @export
 server <- function(id, app_state) {
   shiny$moduleServer(

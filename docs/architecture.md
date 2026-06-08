@@ -1,26 +1,26 @@
-# Architecture — zarc-app
+# Arquitetura — zarc-app
 
-## Overview
+## Visão Geral
 
-**zarc-app** follows the [Rhino](https://appsilon.github.io/rhino/) architecture, which enforces a strict separation between **business logic** and **UI/view** code. This pattern improves testability, maintainability, and enables future module reuse across different interfaces.
+O **zarc-app** segue a arquitetura [Rhino](https://appsilon.github.io/rhino/), que impõe uma separação estrita entre **lógica de negócio** e código de **UI/visualização**. Este padrão melhora a testabilidade, manutenibilidade e permite reuso futuro de módulos em diferentes interfaces.
 
 ---
 
-## Module Separation
+## Separação de Módulos
 
 ```mermaid
 graph LR
     subgraph "app/logic/ (Pure R)"
-        IBGE["ibge.R<br/>IBGE & SIDRA API"]
-        STATE["state.R<br/>Session State"]
+        IBGE["ibge.R<br/>API IBGE & SIDRA"]
+        STATE["state.R<br/>Estado da Sessão"]
     end
 
     subgraph "app/view/ (Shiny Modules)"
-        GEO["geo_sidebar.R<br/>Filter Controls"]
+        GEO["geo_sidebar.R<br/>Controles de Filtro"]
     end
 
     subgraph "app/"
-        MAIN["main.R<br/>Entry Point + Leaflet Map"]
+        MAIN["main.R<br/>Ponto de Entrada + Mapa Leaflet"]
     end
 
     GEO -->|"box::use()"| IBGE
@@ -32,75 +32,75 @@ graph LR
 
 ---
 
-## Layers
+## Camadas
 
-### `app/logic/` — Business Logic
+### `app/logic/` — Lógica de Negócio
 
-Files in this directory contain **pure R functions** with no Shiny reactivity. They can be:
+Arquivos neste diretório contêm **funções R puras** sem reatividade Shiny. Elas podem ser:
 
-- Tested independently (no Shiny session required for most tests)
-- Reused in scripts, APIs, or other applications
-- Mocked easily in integration tests
+- Testadas independentemente (sem sessão Shiny na maioria dos testes)
+- Reutilizadas em scripts, APIs ou outras aplicações
+- Mockadas facilmente em testes de integração
 
-| File       | Responsibility                                                  |
-|------------|-----------------------------------------------------------------|
-| `ibge.R`   | HTTP calls to IBGE Localidades API (regions, states, mesoregions) and SIDRA API (Table 74 — milk production) |
-| `state.R`  | Manages a `reactiveValues` session state object; JSON serialization for "shareable research" |
+| Arquivo     | Responsabilidade                                                  |
+|-------------|------------------------------------------------------------------|
+| `ibge.R`    | Chamadas HTTP para API Localidades do IBGE (regiões, estados, mesorregiões) e API SIDRA (Tabela 74 — produção leiteira) |
+| `state.R`   | Gerencia objeto de estado `reactiveValues` da sessão; serialização JSON para "pesquisa compartilhável" |
 
-### `app/view/` — Shiny Modules
+### `app/view/` — Módulos Shiny
 
-Files here define **Shiny modules** (UI + Server pairs) that handle user interaction and reactivity.
+Arquivos aqui definem **módulos Shiny** (pares UI + Server) que lidam com interação do usuário e reatividade.
 
-| File             | Responsibility                                |
-|------------------|-----------------------------------------------|
-| `geo_sidebar.R`  | Cascading filter dropdowns (Region → State → Mesoregion → Year) with "Apply" action button and session export |
+| Arquivo           | Responsabilidade                                |
+|-------------------|------------------------------------------------|
+| `geo_sidebar.R`   | Dropdowns de filtro em cascata (Região → Estado → Mesorregião → Ano) com botão "Aplicar" e exportação de sessão |
 
-### `app/main.R` — Entry Point
+### `app/main.R` — Ponto de Entrada
 
-The top-level module that:
+Módulo de nível superior que:
 
-1. Defines the page layout (sidebar + map)
-2. Initializes the session state (`state$create_state()`)
-3. Wires up child modules
-4. Renders the Leaflet choropleth map reactively based on state changes
+1. Define o layout da página (sidebar + mapa)
+2. Inicializa o estado da sessão (`state$create_state()`)
+3. Conecta módulos filhos
+4. Renderiza o mapa coroplético Leaflet reativamente com base nas mudanças de estado
 
 ---
 
-## Import System
+## Sistema de Importação
 
-All imports use the `{box}` module system:
+Todas as importações usam o sistema de módulos `{box}`:
 
 ```r
-# Import logic functions
+# Importa funções de lógica
 box::use(app/logic/ibge[get_regions, get_states])
 
-# Import a view module
+# Importa um módulo de visualização
 box::use(app/view/geo_sidebar)
 ```
 
-This ensures:
-- **Explicit dependencies** — no hidden `library()` calls
-- **Namespacing** — avoids function name collisions
-- **Traceability** — each import is auditable
+Isso garante:
+- **Dependências explícitas** — sem chamadas `library()` ocultas
+- **Namespacing** — evita colisões de nomes de funções
+- **Rastreabilidade** — cada importação é auditável
 
 ---
 
-## State Management
+## Gerenciamento de Estado
 
-The session state (`app/logic/state.R`) acts as a **single source of truth**:
+O estado da sessão (`app/logic/state.R`) atua como **fonte única da verdade**:
 
 ```
-User Interaction → geo_sidebar (updates state) → main.R (observes state → renders map)
+Interação do Usuário → geo_sidebar (atualiza estado) → main.R (observa estado → renderiza mapa)
 ```
 
-The state is serializable to JSON, enabling:
-- **Reproducible research** — share exact filter configurations
-- **Session persistence** — restore previous analysis sessions
-- **Audit trail** — log researcher exploration paths
+O estado é serializável para JSON, permitindo:
+- **Pesquisa reproduzível** — compartilhe configurações exatas de filtro
+- **Persistência de sessão** — restaure sessões de análise anteriores
+- **Trilha de auditoria** — registre caminhos de exploração do pesquisador
 
 ---
 
-## Data Flow
+## Fluxo de Dados
 
 ```mermaid
 sequenceDiagram

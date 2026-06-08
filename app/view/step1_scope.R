@@ -1,8 +1,8 @@
 # nolint start: commented_code_linter
 # zarc-app / app / view / step1_scope.R
-# Wizard Step 1: Scope Definition & Milk Production.
-# Encapsulates all IBGE geographic selection, map,
-# charts, analysis, and data table functionality.
+# Passo 1 do Wizard: Definição de Escopo e Produção Leiteira.
+# Encapsula toda a seleção geográfica do IBGE, mapa,
+# gráficos, análise e funcionalidade de tabela de dados.
 # nolint end
 
 box::use(
@@ -17,9 +17,9 @@ box::use(
   app / logic / ibge,
 )
 
-#' Step 1 Scope UI
-#' @param id Character namespace ID.
-#' @return A Shiny tag list.
+#' UI do Passo 1 — Escopo
+#' @param id Identificador de namespace (character).
+#' @return Lista de tags Shiny.
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -105,10 +105,10 @@ ui <- function(id) {
   )
 }
 
-#' Step 1 Scope Server
-#' @param id Character namespace ID.
-#' @param app_state A `reactiveValues` object
-#'   shared with the main server.
+#' Server do Passo 1 — Escopo
+#' @param id Identificador de namespace (character).
+#' @param app_state Objeto `reactiveValues`
+#'   compartilhado com o server principal.
 #' @export
 server <- function(id, app_state) {
   shiny$moduleServer(id, function(
@@ -116,13 +116,13 @@ server <- function(id, app_state) {
   ) {
     ns <- session$ns
 
-    # ── Wire sub-modules ──
+    # ── Conecta submódulos ──
     geo_sidebar$server("geo", app_state)
     charts$server("charts", app_state)
     analysis$server("analysis", app_state)
     data_view$server("data_view", app_state)
 
-    # ── Expose locked status for cond. panel ──
+    # ── Expõe status de travamento p/ painel condicional ──
     output$is_locked <- shiny$reactive({
       !is.null(app_state$locked_region)
     })
@@ -131,7 +131,7 @@ server <- function(id, app_state) {
       suspendWhenHidden = FALSE
     )
 
-    # ── Map ──
+    # ── Mapa ──
     output$map <- leaflet$renderLeaflet({
       leaflet$leaflet() |>
         leaflet$addProviderTiles(
@@ -143,7 +143,7 @@ server <- function(id, app_state) {
         )
     })
 
-    # ── Main data observer: apply_trigger ──
+    # ── Observador principal de dados: apply_trigger ──
     shiny$observeEvent(
       app_state$apply_trigger,
       {
@@ -158,7 +158,7 @@ server <- function(id, app_state) {
         codes <- app_state$target_codes
         years <- app_state$years
 
-        # Validate API request
+        # Valida requisição à API
         validation <- (
           ibge$validate_api_request(
             n_categories = 1L,
@@ -188,23 +188,23 @@ server <- function(id, app_state) {
 
         tryCatch(
           {
-            # Fetch milk production
+            # Busca dados de produção leiteira
             milk <- ibge$fetch_milk_production(
               geo_level, codes, years
             )
 
-            # Store raw data
+            # Armazena dados brutos
             app_state$raw_milk_data <- milk
             app_state$milk_data <- milk
 
-            # For the map: use latest year
+            # Para o mapa: usa o ano mais recente
             latest_yr <- if (nrow(milk) > 0L) {
               max(milk$year)
             } else {
               max(years)
             }
 
-            # Map subdivision level
+            # Nível de subdivisão do mapa
             subdiv <- switch(geo_level,
               "N2" = "regioes",
               "N3" = "estados",
@@ -214,7 +214,7 @@ server <- function(id, app_state) {
               "estados"
             )
 
-            # Build GeoJSON
+            # Constrói GeoJSON
             geo <- fetch_geo_for_codes(
               geo_level, codes, subdiv
             )
@@ -235,7 +235,7 @@ server <- function(id, app_state) {
               )
             }
 
-            # Update map
+            # Atualiza mapa
             proxy <- leaflet$leafletProxy(
               ns("map"), session
             )
@@ -294,7 +294,7 @@ server <- function(id, app_state) {
       ignoreInit = TRUE
     )
 
-    # ── Confirm Region & Advance ──
+    # ── Confirmar Região & Avançar ──
     shiny$observeEvent(input$confirm_advance, {
       has_data <- (
         !is.null(app_state$geo_level) &&
@@ -313,7 +313,7 @@ server <- function(id, app_state) {
         return()
       }
 
-      # Lock the current selection
+      # Trava a seleção atual
       app_state$locked_region <- list(
         geo_level = app_state$geo_level,
         target_codes = app_state$target_codes,
@@ -337,7 +337,7 @@ server <- function(id, app_state) {
       )
     })
 
-    # ── Unlock / Edit ──
+    # ── Destravar / Editar ──
     shiny$observeEvent(input$unlock_edit, {
       app_state$locked_region <- NULL
       app_state$locked_years <- NULL
@@ -356,9 +356,9 @@ server <- function(id, app_state) {
   })
 }
 
-# ── Helper functions (migrated from main.R) ──
+# ── Funções auxiliares (migradas de main.R) ──
 
-#' Fetch GeoJSON for selected codes.
+#' Busca GeoJSON para os códigos selecionados.
 #' @keywords internal
 fetch_geo_for_codes <- function(
   geo_level, codes, subdiv
@@ -389,7 +389,7 @@ fetch_geo_for_codes <- function(
   do.call(rbind, geo_list)
 }
 
-#' Render choropleth map.
+#' Renderiza mapa coroplético.
 #' @keywords internal
 render_choropleth <- function(
   proxy, geo, year
@@ -453,7 +453,7 @@ render_choropleth <- function(
     )
 }
 
-#' Render plain boundary map.
+#' Renderiza mapa de limites simples.
 #' @keywords internal
 render_plain <- function(proxy, geo) {
   proxy |>
