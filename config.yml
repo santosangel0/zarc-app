@@ -2,6 +2,7 @@ default:
   rhino_log_level: !expr Sys.getenv("RHINO_LOG_LEVEL", "INFO")
   rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", "")
   inmet_token: !expr Sys.getenv("INMET_TOKEN")
+  zarc_etl_data_dir: !expr Sys.getenv("ZARC_ETL_DATA_DIR", "/data")
 
 rsconnect:
   inmet_token: !expr Sys.getenv("INMET_TOKEN")

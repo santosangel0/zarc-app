@@ -155,6 +155,34 @@ server <- function(id, app_state) {
 
       output$footer_text <-
         shiny$renderUI({
+          df <- app_state$climate_data
+
+          # Linha dinâmica de procedência (observado/gap-fill/backfill).
+          imp_line <- NULL
+          if (
+            !is.null(df) && nrow(df) > 0L &&
+              "TIPO" %in% names(df)
+          ) {
+            n <- nrow(df)
+            pct <- function(tipo) {
+              paste0(
+                format(
+                  round(100 * sum(df$TIPO == tipo) / n, 1),
+                  nsmall = 1, decimal.mark = ","
+                ),
+                "%"
+              )
+            }
+            imp_line <- shiny$tags$li(
+              shiny$tags$strong("Procedência: "),
+              paste0(
+                "observado ", pct("observado"),
+                " · gap-fill ", pct("gap-fill"),
+                " · backfill ", pct("backfill")
+              )
+            )
+          }
+
           shiny$tags$div(
             shiny$tags$h6(
               shiny$icon("info-circle"),
@@ -163,9 +191,28 @@ server <- function(id, app_state) {
             shiny$tags$ul(
               shiny$tags$li(
                 paste0(
-                  "Valores ausentes (NA) ",
-                  "indicam dados inválidos ",
-                  "ou não disponíveis no INMET."
+                  "Fonte: INMET com lacunas imputadas pelo ",
+                  "NASA POWER (corrigido por viés por ",
+                  "estação×mês). Cobertura 2001–2024."
+                )
+              ),
+              shiny$tags$li(
+                shiny$HTML(
+                  paste0(
+                    "<strong>TIPO</strong>: ",
+                    "<em>observado</em> = dado real do INMET; ",
+                    "<em>gap-fill</em> = lacuna preenchida ",
+                    "dentro do período operacional; ",
+                    "<em>backfill</em> = climatologia do ponto ",
+                    "antes da estação existir."
+                  )
+                )
+              ),
+              imp_line,
+              shiny$tags$li(
+                paste0(
+                  "IMP_TEMP_PCT / IMP_UMID_PCT: % de horas do ",
+                  "dia imputadas em cada variável."
                 )
               ),
               shiny$tags$li(

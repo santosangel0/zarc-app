@@ -7,76 +7,78 @@
 # nolint end
 
 box::use(
-  httr2,
-  jsonlite,
+  DBI,
+  duckdb,
   sf,
 )
 
-# INMET API requires a browser-like User-Agent
-inmet_ua <- paste0(
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ",
-  "AppleWebKit/537.36 (KHTML, like Gecko) ",
-  "Chrome/120.0.0.0 Safari/537.36"
-)
+# Diretório dos parquets do zarc-etl (montado no container — ver config.yml).
+data_dir <- function() {
+  dir <- tryCatch(config::get("zarc_etl_data_dir"), error = function(e) NULL)
+  if (is.null(dir) || !nzchar(dir)) {
+    dir <- Sys.getenv("ZARC_ETL_DATA_DIR", "/data")
+  }
+  dir
+}
 
-#' Busca todas as estações automáticas do INMET.
+estacoes_path <- function() file.path(data_dir(), "estacoes.parquet")
+diario_path <- function() {
+  file.path(data_dir(), "inmet_historico_diario_imputado.parquet")
+}
+
+# Cobertura temporal do parquet imputado (NASA POWER horário começa em 2001).
+DATA_MIN <- as.Date("2001-01-01")
+DATA_MAX <- as.Date("2024-12-31")
+
+# Executa uma query DuckDB efêmera (in-memory) lendo parquet via read_parquet.
+# DuckDB faz projection/predicate pushdown direto no parquet (eficiente).
+db_query <- function(sql, params = NULL) {
+  con <- DBI$dbConnect(duckdb$duckdb())
+  on.exit(DBI$dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  if (is.null(params)) {
+    DBI$dbGetQuery(con, sql)
+  } else {
+    DBI$dbGetQuery(con, sql, params = params)
+  }
+}
+
+# Aspas simples para um caminho usado em SQL (caminhos vêm da config, não do usuário).
+sql_path <- function(p) paste0("'", p, "'")
+
+#' Busca as estações INMET do parquet do zarc-etl.
 #'
-#' Recupera a lista completa de estações
-#' meteorológicas automáticas da API do INMET, limpa
-#' coordenadas e retorna objeto `sf` em WGS84.
+#' Lê `estacoes.parquet` e mantém apenas estações que
+#' possuem série no parquet diário imputado, retornando
+#' um objeto `sf` em WGS84. Substitui a chamada à API
+#' ao vivo do INMET.
 #'
 #' @return Objeto `sf` com colunas
 #'   `CD_ESTACAO`, `DC_NOME`, `VL_LATITUDE`,
 #'   `VL_LONGITUDE` e geometria de pontos.
 #' @export
 get_stations <- function() {
-  url <- paste0(
-    "https://apitempo.inmet.gov.br/",
-    "estacoes/T"
+  # Só estações que possuem série no parquet imputado (evita pontos sem dado).
+  sql <- sprintf(
+    paste0(
+      "SELECT cd_estacao, dc_nome, vl_latitude, vl_longitude ",
+      "FROM read_parquet(%s) ",
+      "WHERE cd_estacao IN ",
+      "(SELECT DISTINCT cd_estacao FROM read_parquet(%s)) ",
+      "ORDER BY cd_estacao"
+    ),
+    sql_path(estacoes_path()), sql_path(diario_path())
+  )
+  est <- db_query(sql)
+
+  data <- data.frame(
+    CD_ESTACAO = as.character(est$cd_estacao),
+    DC_NOME = as.character(est$dc_nome),
+    VL_LATITUDE = as.numeric(est$vl_latitude),
+    VL_LONGITUDE = as.numeric(est$vl_longitude),
+    stringsAsFactors = FALSE
   )
 
-  resp <- httr2$request(url) |>
-    httr2$req_headers(
-      `User-Agent` = inmet_ua,
-      Accept = "application/json"
-    ) |>
-    httr2$req_retry(max_tries = 3L) |>
-    httr2$req_timeout(60L) |>
-    httr2$req_error(
-      is_error = function(resp) FALSE
-    ) |>
-    httr2$req_perform()
-
-  status <- httr2$resp_status(resp)
-  if (status >= 400L) {
-    stop(
-      "INMET stations API error (HTTP ",
-      status, ")"
-    )
-  }
-
-  raw <- httr2$resp_body_string(resp)
-  data <- jsonlite$fromJSON(
-    raw,
-    simplifyVector = TRUE
-  )
-
-  # Drop rows with missing coordinates
-  has_coords <- (
-    !is.na(data$VL_LATITUDE) &
-      !is.na(data$VL_LONGITUDE)
-  )
-  data <- data[has_coords, ]
-
-  # Coerce to numeric
-  data$VL_LATITUDE <- as.numeric(
-    data$VL_LATITUDE
-  )
-  data$VL_LONGITUDE <- as.numeric(
-    data$VL_LONGITUDE
-  )
-
-  # Drop rows where coercion failed
+  # Drop rows where coords are missing/invalid
   valid <- (
     !is.na(data$VL_LATITUDE) &
       !is.na(data$VL_LONGITUDE)
@@ -84,7 +86,7 @@ get_stations <- function() {
   data <- data[valid, ]
 
   # Convert to sf (WGS84 = EPSG:4326)
-  stations_sf <- sf$st_as_sf(
+  sf$st_as_sf(
     data,
     coords = c(
       "VL_LONGITUDE", "VL_LATITUDE"
@@ -92,8 +94,6 @@ get_stations <- function() {
     crs = 4326L,
     remove = FALSE
   )
-
-  stations_sf
 }
 
 #' Filtra estações por Região de Interesse.
@@ -143,47 +143,25 @@ filter_stations <- function(
   sf$st_transform(joined, 4326L)
 }
 
-#' Busca dados climáticos diários de uma estação.
+#' Busca dados climáticos diários (imputados) de uma estação.
 #'
-#' Recupera observações diárias da API autenticada
-#' do INMET, aplica filtros de Controle de Qualidade
-#' e calcula ITU (Buffington 1977).
+#' Lê do parquet diário imputado do zarc-etl (INMET com
+#' lacunas preenchidas pelo NASA POWER, corrigido por
+#' viés). QC e ITU já vêm calculados no parquet. As datas
+#' são limitadas à cobertura disponível (2001–2024).
 #'
 #' @param station_code Código da estação (character).
 #' @param start_date Data inicial (Date ou character).
 #' @param end_date Data final (Date ou character).
 #' @return data.frame com colunas: `date`,
 #'   `station_code`, `TEMP_MED`, `TEMP_MAX`,
-#'   `UMID_MED`, `UMID_MIN`, `ITU_MED`,
-#'   `ITU_MAX`.
+#'   `UMID_MED`, `UMID_MIN`, `ITU_MED`, `ITU_MAX`,
+#'   `TIPO`, `ORIGEM_TEMP`, `ORIGEM_UMID`,
+#'   `IMP_TEMP_PCT`, `IMP_UMID_PCT`.
 #' @export
 fetch_climate_data <- function(
   station_code, start_date, end_date
 ) {
-  token <- config::get("inmet_token")
-
-  url <- paste0(
-    "https://apitempo.inmet.gov.br/",
-    "token/estacao/diaria/",
-    start_date, "/", end_date, "/",
-    station_code, "/", token
-  )
-
-  resp <- httr2$request(url) |>
-    httr2$req_headers(
-      `User-Agent` = inmet_ua,
-      Accept = "application/json"
-    ) |>
-    httr2$req_retry(max_tries = 3L) |>
-    httr2$req_timeout(120L) |>
-    httr2$req_error(
-      is_error = function(resp) FALSE
-    ) |>
-    httr2$req_perform()
-
-  status <- httr2$resp_status(resp)
-
-  # Empty columns definition
   empty_df <- data.frame(
     date = as.Date(character(0)),
     station_code = character(0),
@@ -193,97 +171,60 @@ fetch_climate_data <- function(
     UMID_MIN = numeric(0),
     ITU_MED = numeric(0),
     ITU_MAX = numeric(0),
+    TIPO = character(0),
+    ORIGEM_TEMP = character(0),
+    ORIGEM_UMID = character(0),
+    IMP_TEMP_PCT = numeric(0),
+    IMP_UMID_PCT = numeric(0),
     stringsAsFactors = FALSE
   )
 
-  if (status >= 400L) {
-    warning(
-      "INMET API error (HTTP ", status,
-      ") for station ", station_code
+  # Limita o intervalo pedido à cobertura do parquet.
+  sd <- max(as.Date(start_date), DATA_MIN)
+  ed <- min(as.Date(end_date), DATA_MAX)
+  if (is.na(sd) || is.na(ed) || sd > ed) {
+    return(empty_df)
+  }
+
+  sql <- sprintf(
+    paste0(
+      "SELECT data, temp_med, temp_max, umid_med, umid_min, ",
+      "itu_med, itu_max, tipo, temp_origem, umid_origem, ",
+      "temp_frac_imp, umid_frac_imp ",
+      "FROM read_parquet(%s) ",
+      "WHERE cd_estacao = ? ",
+      "AND data BETWEEN CAST(? AS DATE) AND CAST(? AS DATE) ",
+      "ORDER BY data"
+    ),
+    sql_path(diario_path())
+  )
+  res <- db_query(
+    sql,
+    params = list(
+      station_code, as.character(sd), as.character(ed)
     )
-    return(empty_df)
-  }
-
-  raw <- httr2$resp_body_string(resp)
-  if (nchar(raw) < 3L) {
-    return(empty_df)
-  }
-
-  data <- jsonlite$fromJSON(
-    raw,
-    simplifyVector = TRUE
   )
 
-  if (
-    length(data) == 0L ||
-      !is.data.frame(data) ||
-      nrow(data) == 0L
-  ) {
+  if (nrow(res) == 0L) {
     return(empty_df)
   }
 
-  # Build result data.frame
-  df <- data.frame(
-    date = as.Date(data$DT_MEDICAO),
+  data.frame(
+    date = as.Date(res$data),
     station_code = station_code,
+    TEMP_MED = res$temp_med,
+    TEMP_MAX = res$temp_max,
+    UMID_MED = res$umid_med,
+    UMID_MIN = res$umid_min,
+    ITU_MED = res$itu_med,
+    ITU_MAX = res$itu_max,
+    TIPO = res$tipo,
+    ORIGEM_TEMP = res$temp_origem,
+    ORIGEM_UMID = res$umid_origem,
+    IMP_TEMP_PCT = round(res$temp_frac_imp * 100, 1),
+    IMP_UMID_PCT = round(res$umid_frac_imp * 100, 1),
     stringsAsFactors = FALSE
   )
-
-  # Coerce numeric columns
-  df$TEMP_MED <- suppressWarnings(
-    as.numeric(data$TEMP_MED)
-  )
-  df$TEMP_MAX <- suppressWarnings(
-    as.numeric(data$TEMP_MAX)
-  )
-  df$UMID_MED <- suppressWarnings(
-    as.numeric(data$UMID_MED)
-  )
-  df$UMID_MIN <- suppressWarnings(
-    as.numeric(data$UMID_MIN)
-  )
-
-  # ── Quality Control ──
-  # Temperature: [-10, 50]
-  df$TEMP_MED <- ifelse(
-    df$TEMP_MED < -10 | df$TEMP_MED > 50,
-    NA_real_,
-    df$TEMP_MED
-  )
-  df$TEMP_MAX <- ifelse(
-    df$TEMP_MAX < -10 | df$TEMP_MAX > 50,
-    NA_real_,
-    df$TEMP_MAX
-  )
-
-  # Humidity: [0, 100]
-  df$UMID_MED <- ifelse(
-    df$UMID_MED < 0 | df$UMID_MED > 100,
-    NA_real_,
-    df$UMID_MED
-  )
-  df$UMID_MIN <- ifelse(
-    df$UMID_MIN < 0 | df$UMID_MIN > 100,
-    NA_real_,
-    df$UMID_MIN
-  )
-
-  # ── ITU Calculation (Buffington 1977) ──
-  itu_term_med <- (
-    df$UMID_MED * (df$TEMP_MED - 14.3)
-  ) / 100
-  df$ITU_MED <- (
-    0.8 * df$TEMP_MED + itu_term_med + 46.3
-  )
-
-  itu_term_max <- (
-    df$UMID_MIN * (df$TEMP_MAX - 14.3)
-  ) / 100
-  df$ITU_MAX <- (
-    0.8 * df$TEMP_MAX + itu_term_max + 46.3
-  )
-
-  df
 }
 
 #' Aplica buffer espacial a um polígono.
